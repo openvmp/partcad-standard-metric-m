@@ -1,0 +1,137 @@
+{% set sizes = [2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 10, 12, 14, 32] %}
+{% set widths = [1, 1.5, 2, 2.5, 4, 6, 8, 10, 12, 16, 20, 24, 25, 30, 32, 40] %}
+{% set depths = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 7, 8, 9, 10, 12, 16] %}
+
+sketches:
+{% for size in sizes %}
+  m{{ size }}:
+    type: basic
+    circle: {{ size / 2.0 }}  # radius
+  {% for width in widths %}
+  m{{ size }}-slotted-{{ width }}:
+    # TODO(clairbee): Use a CadQuery script to define the face of a slotted hole
+    type: basic
+    circle: {{ size / 2.0 }}
+  {% endfor %}
+{% endfor %}
+
+interfaces:
+{% for size in sizes %}
+  m{{ size }}:
+    desc: Abstract {{ size }}mm circular interface
+    abstract: True
+    ports:
+      m{{ size }}:
+        location: [[0, 0, 0], [0, 0, 1], 0] # redandant, for demonstration
+        sketch: m{{ size }}
+    parameters:
+      turnZ:
+        min: 0
+        max: 360
+        default: 0
+
+  m{{ size }}-opening:
+    abstract: True
+    desc: Abstract {{ size }}mm circular opening
+    inherits:
+      m{{ size }}: opening
+
+  {% for depth in depths %}
+  m{{ size }}-hole-{{ depth }}:
+    desc: {{ depth }}mm deep hole of {{ size }}mm diameter
+    inherits:
+      m{{ size }}-opening: {{ depth }}mm-hole
+  {% endfor %}
+
+  m{{ size }}-thru:
+    desc: {{ size }}mm through hole
+    inherits:
+      m{{ size }}-opening: thru
+
+  {% for depth in depths %}
+  m{{ size }}-thru-{{ depth }}:
+    desc: {{ depth }}mm thick through hole of {{ size }}mm diameter
+    inherits:
+      m{{ size }}-thru: {{ depth }}mm
+    mates:
+      - m{{ size }}-thru
+
+  {% for width in widths %}
+  m{{ size }}-thru-{{ depth }}-slotted-{{ width }}:
+    desc: {{ depth }}mm thick through slotted hole {{ size }}mm deep, {{ width }}mm long
+    ports:
+      m{{ size }}:
+        sketch: m{{ size }}-slotted-{{ width }}
+  {% endfor %}
+  {% endfor %}
+
+  m{{ size }}-threaded-thru:
+    desc: {{ size }}mm threaded through hole
+    inherits:
+      m{{ size }}-opening: threaded-thru
+
+  {% for depth in depths %}
+  m{{ size }}-threaded-thru-{{ depth }}:
+    desc: {{ depth }}mm thick threaded through hole of {{ size }}mm diameter
+    inherits:
+      m{{ size }}-threaded-thru: {{ depth }}mm
+  {% endfor %}
+
+  {% for depth in depths %}
+  m{{ size }}-threaded-hole-{{ depth }}:
+    desc: {{ depth }}mm thick threaded through hole of {{ size }}mm diameter
+    inherits:
+      m{{ size }}-threaded-hole: {{ depth }}mm
+  {% endfor %}
+
+  m{{ size }}-shaft:
+    desc: Abstract {{ size }}mm shaft
+    abstract: True
+    inherits:
+      m{{ size }}: shaft
+
+  {% for length in depths %}
+  m{{ size }}-shaft-{{ length }}:
+    desc: {{ length }}mm long {{ size }}mm shaft
+    inherits:
+      m{{ size }}-shaft: {{ length }}mm-long
+    mates:
+      {% for depth in depths %}
+      - m{{ size }}-hole-{{ depth }}
+      {% endfor %}
+  {% endfor %}
+
+  m{{ size }}-screw:
+    desc: Abstract M{{ size }} screw
+    abstract: True
+    inherits:
+      m{{ size }}: screw
+
+  {% for length in depths %}
+  m{{ size }}-screw-{{ length }}:
+    desc: {{ length }}mm long M{{ size }} screw
+    inherits:
+      m{{ size }}-screw: {{ length }}mm-long
+    parameters:
+      moveZ:
+        max: {{ length - 2 }}  # TODO(clairbee): Is there an IEEE standard minimum depth?
+        min: 0
+        default: 0
+    mates:
+      {% for mate_length in depths %}
+      - m{{ size }}-threaded-thru-{{ mate_length }}
+      # m{{ size }}-threaded-thru-{{ mate_length }}:
+      #   moveZ:
+      #     max: {{ length - 2 }}  # TODO(clairbee): Is there a standard minimum depth?
+      #     min: 0
+      #     default: 0
+      # - m{{ size }}-hole-{{ mate_length }}
+      # m{{ size }}-threaded-hole-{{ mate_length }}:
+      #   moveZ:
+      #     max: {{ length - 2 }}  # TODO(clairbee): Is there a standard minimum depth?
+      #     min: {{ [0, length - mate_length + 0.5] | min }}
+      #     default: {{ [0, length - mate_length + 0.5] | min }}
+      {% endfor %}
+  {% endfor %}
+{% endfor %}
+
