@@ -84,7 +84,7 @@ interfaces:
   m{{ size }}-threaded-hole-{{ depth }}:
     desc: {{ depth }}mm thick threaded through hole of {{ size }}mm diameter
     inherits:
-      m{{ size }}-threaded-hole: {{ depth }}mm
+      m{{ size }}-hole-{{depth}}: threaded
   {% endfor %}
 
   m{{ size }}-shaft:
@@ -123,6 +123,7 @@ interfaces:
     mates:
       {% for mate_length in depths %}
       - m{{ size }}-threaded-thru-{{ mate_length }}
+      - m{{ size }}-threaded-hole-{{ mate_length }}
       # m{{ size }}-threaded-thru-{{ mate_length }}:
       #   moveZ:
       #     max: {{ length - 2 }}  # TODO(clairbee): Is there a standard minimum depth?
