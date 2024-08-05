@@ -1,6 +1,8 @@
 desc: Standard M* interfaces
 partcad: ">=0.6.0"
 
+# TODO(clairbee): improve mating between various kinds of openings
+
 {% set sizes = [1, 1.2, 1.4, 1.6, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10, 12, 14, 16, 20, 24, 30, 36, 42, 48, 56, 64] %}
 {% set widths = [1, 1.5, 2, 2.5, 4, 6, 8, 10, 12, 16, 20, 24, 25, 30, 32, 40] %}
 {% set depths = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 7, 8, 9, 10, 12, 14, 16, 20, 22] %}
@@ -32,6 +34,9 @@ interfaces:
         min: 0
         max: 360
         default: 0
+      moveX: {}  # Hotizontal offset for openings of different sizes
+      moveY: {}  # Hotizontal offset for openings of different sizes
+      moveZ: {}  # Affset along the alignment axis
 
   m{{ size }}-opening:
     abstract: True
