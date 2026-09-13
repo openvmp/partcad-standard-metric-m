@@ -5,8 +5,9 @@ every metric size.
 
 ## How it is declared
 
-The family is declared **once**, parametrically, and every name this package has
-ever published is an alias of one instance of it. The lists of sizes, depths and
+On PartCAD 0.8.77 and newer the family is declared **once**, parametrically, and
+every name this package has ever published is an alias of one instance of it.
+(Older PartCADs read the same package differently; see below.) The lists of sizes, depths and
 widths at the top of ``partcad.yaml`` now say only which combinations get a
 *name* of their own -- any other combination is reachable by asking for it:
 
@@ -33,7 +34,8 @@ parts:
 | ``m-hole`` | ``size``, ``depth`` | ``m4-hole-3`` |
 | ``m-thru`` | ``size`` | ``m4-thru`` |
 | ``m-thru-depth`` | ``size``, ``depth`` | ``m4-thru-3`` |
-| ``m-thru-slotted`` | ``size``, ``depth``, ``width`` | ``m4-thru-3-slotted-30`` |
+| ``m-thru-slotted`` | ``size``, ``width`` | -- |
+| ``m-thru-depth-slotted`` | ``size``, ``depth``, ``width`` | ``m4-thru-3-slotted-30`` |
 | ``m-threaded-thru`` | ``size`` | ``m4-threaded-thru`` |
 | ``m-threaded-thru-depth`` | ``size``, ``depth`` | ``m4-threaded-thru-3`` |
 | ``m-threaded-hole`` | ``size``, ``depth`` | ``m4-threaded-hole-3`` |
@@ -55,10 +57,52 @@ its ``3mm-thru-opening-m4`` port go on working exactly as they did -- all 11,150
 names, their descriptions, their ports, their port coordinates and their freedom
 of movement are unchanged.
 
-**This needs PartCAD 0.8.77 or newer**, which is what ``partcad: ">=0.8.77"`` in
-``partcad.yaml`` says: parametric interfaces and ``alias:`` are what the family
-is declared with, so an older PartCAD cannot read it. It fails with "update
-PartCAD" rather than with something obscure.
+### Two PartCADs, one package
+
+Parametric interfaces and ``alias:`` arrived in PartCAD 0.8.77, and raising this
+package's ``partcad:`` requirement to say so would have taken it away from
+everyone who has not updated. So ``partcad.yaml`` carries **both** forms and the
+template picks:
+
+* **PartCAD 0.8.77 and newer** get the family above -- thirteen parametric
+  interfaces, every published name an alias, and any size, depth, width or
+  length reachable whether or not a list names it.
+* **Anything older** gets exactly what this package has always published, down
+  to the last port coordinate, generated the way it always was.
+
+Neither branch is a lesser version of the other for the names they share: on
+both, ``m4-thru-3`` is the same interface with the same port in the same place.
+
+### One break, on the newer branch only
+
+A slotted opening is a **through hole** now: ``m4-thru-3-slotted-30`` inherits
+``m4-thru-3`` rather than standing on its own, so it mates with a screw the way
+every other opening does -- which it never did before -- and it carries the
+freedom of movement that slotting a hole is *for*: the bolt may sit anywhere
+along what is left of the slot.
+
+The cost is its port's name. It used to be the bare ``m4``; it is now
+``slotted-30-3mm-thru-opening-m4``, named after the chain it inherits like every
+other port here. **An ASSY that connects that port by name has to be updated.**
+Nothing else moved: of the 11,150 published interfaces, the 8,000 slotted ones
+changed in exactly that way and the other 3,150 not at all.
+
+Older clients see none of this -- their slotted openings are exactly as they
+were.
+
+### A screw may now be driven in, on both branches
+
+This package has always declared how far a screw may travel along its own axis
+(``moveZ: {max: length - 2}`` on every ``mN-screw-L``), and PartCAD has always
+discarded it, because an inherited declaration used to overwrite the interface's
+own. PartCAD 0.8.77 reads it, so 425 of these interfaces gain the movement they
+were written to have -- on the older branch too, since it is the *reader* that
+changed rather than the declaration.
+
+``length - 2`` is negative for the 1mm and 1.5mm screws the lists also name.
+The parametric branch clamps it at zero; the older branch cannot be touched
+without ceasing to be what was published, so PartCAD reports those fifty and
+reads them as no movement, which is what they already silently were.
 
 ## Interfaces
 
