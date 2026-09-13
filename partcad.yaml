@@ -20,6 +20,36 @@ sketches:
   {% endfor %}
 {% endfor %}
 
+  # --- The same boundaries, drawn once instead of once per size ------------
+  #
+  # A sketch declared with parameters and read with expressions: one 'm' serves
+  # every size an interface below asks for, where the loop above has to write
+  # out one sketch per size in the list.
+  m:
+    desc: The boundary of an M%size% opening
+    type: basic
+    # A 'basic' sketch has no script to hand its parameters to, so the
+    # expression is how it reads them.
+    circle: "%size / 2%"
+    parameters:
+      size:
+        type: float
+        default: 3.0
+
+  m-slotted:
+    desc: The boundary of an M%size% opening slotted %width%mm along X
+    # TODO(clairbee): Use a CadQuery script to define the face of a slotted hole
+    type: basic
+    circle: "%size / 2%"
+    parameters:
+      size:
+        type: float
+        default: 3.0
+      width:
+        type: float
+        default: 10.0
+
+
 interfaces:
 {% for size in sizes %}
   m{{ size }}:
@@ -125,3 +155,131 @@ interfaces:
   {% endfor %}
 {% endfor %}
 
+  # --- The same family, declared once instead of once per size -------------
+  #
+  # Everything above is a Jinja2 loop writing out one interface per
+  # combination: 25 sizes times 20 depths times 16 widths, and a size, a depth
+  # or a width that is not in the three lists at the top of this file simply
+  # does not exist. What follows is the same family written parametrically -
+  # 'variables:' declares what each interface is built from, '%...%'
+  # substitutes the values, and a reference names them the way it names a
+  # parametrized part:
+  #
+  #     m-thru;size=4,depth=3       an M4 through hole in 3mm of material
+  #     m-screw;size=4,length=12    a 12mm long M4 screw
+  #     m-hole;size=2.5,depth=7.5   an M2.5 blind hole 7.5mm deep - a depth no list above has
+  #
+  # The enumerated names are not going anywhere: a package that names
+  # 'm3-thru-3' keeps working. The two families are separate sets of
+  # interfaces rather than two spellings of one, though, so a part implements
+  # one or the other and two parts that are to be connected use the same one.
+  #
+  # These need a PartCAD that has parametric interfaces (0.8.77 and later).
+  # The package does not declare that as its requirement, because declaring it
+  # would stop an older PartCAD from loading the enumerated interfaces above,
+  # which it handles perfectly well.
+
+  m:
+    desc: Abstract %size%mm circular interface
+    abstract: True
+    variables:
+      size:
+        type: float
+        default: 3.0
+    ports:
+      m:
+        location: [[0, 0, 0], [0, 0, 1], 0] # redundant, for demonstration
+        sketch: m
+        params:
+          size: "%size%"
+    parameters:
+      turnZ:
+        min: 0
+        max: 360
+        default: 0
+      moveX: {}  # Horizontal offset for openings of different sizes
+      moveY: {}  # Horizontal offset for openings of different sizes
+      moveZ: {}  # Offset along the alignment axis
+
+  m-opening:
+    desc: Abstract %size%mm circular opening
+    variables:
+      size: 3.0
+    inherits:
+      "m;size=%size%": opening
+    mates:
+      - "m-opening;size=%size%"
+
+  m-hole:
+    desc: "%depth%mm deep hole of %size%mm diameter"
+    variables:
+      size: 3.0
+      depth: 3.0
+    inherits:
+      "m-opening;size=%size%": "%depth%mm-hole"
+
+  m-thru:
+    desc: "%depth%mm thick through hole of %size%mm diameter"
+    variables:
+      size: 3.0
+      depth: 3.0
+    inherits:
+      "m-opening;size=%size%": thru
+
+  m-thru-slotted:
+    desc: "%depth%mm thick through slotted hole of %size%mm diameter, %width%mm long"
+    variables:
+      size: 3.0
+      depth: 3.0
+      width: 10.0
+    ports:
+      m:
+        sketch: m-slotted
+        params:
+          size: "%size%"
+          width: "%width%"
+    parameters:
+      # The slot is what the freedom of movement is for: a bolt through it may
+      # sit anywhere along what is left of the slot once the bolt is in it.
+      moveX: ["%-(width - size) / 2%", "%(width - size) / 2%", 0]
+
+  m-threaded-hole:
+    desc: "%depth%mm deep threaded hole of %size%mm diameter"
+    variables:
+      size: 3.0
+      depth: 3.0
+    inherits:
+      "m-hole;size=%size%,depth=%depth%": threaded
+
+  m-threaded-thru:
+    desc: "%depth%mm thick threaded through hole of %size%mm diameter"
+    variables:
+      size: 3.0
+      depth: 3.0
+    inherits:
+      "m-thru;size=%size%,depth=%depth%": threaded
+
+  m-shaft:
+    desc: "%length%mm long %size%mm shaft"
+    variables:
+      size: 3.0
+      length: 10.0
+    inherits:
+      "m;size=%size%": shaft
+    mates:
+      - "m-opening;size=%size%"
+
+  m-screw:
+    desc: "%length%mm long M%size% screw"
+    variables:
+      size: 3.0
+      length: 6.0
+    inherits:
+      "m;size=%size%": screw
+    mates:
+      - "m-opening;size=%size%"
+    parameters:
+      moveZ:
+        max: "%length - 2%"  # TODO(clairbee): Is there an IEEE standard minimum depth?
+        min: 0
+        default: 0
