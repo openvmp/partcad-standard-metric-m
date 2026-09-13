@@ -1,36 +1,37 @@
 desc: Standard M* interfaces
-partcad: ">=0.6.29"
+partcad: ">=0.8.77"  # parametric interfaces and "alias:" - see README.md
 
 # TODO(clairbee): improve mating between various kinds of openings
+
+# The family is declared once, parametrically, and every name this package has
+# ever published is an alias of one instance of it.
+#
+# It used to be a Jinja2 loop writing out one interface per combination -- 25
+# sizes times 20 depths times 16 widths -- which meant that a size, a depth or a
+# width not in the three lists below simply did not exist. Now the lists say
+# only which combinations get a *name* of their own; any other is reachable by
+# asking for it:
+#
+#     m4-thru-3                    the published name, unchanged
+#     m-thru-depth;size=4,depth=3  the same interface, asked for by value
+#     m-hole;size=2.5,depth=7.5    a depth no list below has
+#
+# An alias is the interface it names: the same ports under the same names, a
+# drop-in for it, mating with whatever it mates with. So a part that says
+# "implements: m4-thru-3" and an ASSY that connects its
+# "3mm-thru-opening-m4" port go on working exactly as before.
 
 {% set sizes = [1, 1.2, 1.4, 1.6, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10, 12, 14, 16, 20, 24, 30, 32, 36, 42, 48, 56, 64] %}
 {% set widths = [1, 1.5, 2, 2.5, 4, 6, 8, 10, 12, 16, 20, 24, 25, 30, 32, 40] %}
 {% set depths = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 7, 8, 9, 10, 12, 14, 16, 20, 22] %}
 
 sketches:
-{% for size in sizes %}
-  m{{ size }}:
-    type: basic
-    circle: {{ size / 2.0 }}  # radius
-  {% for width in widths %}
-  m{{ size }}-slotted-{{ width }}:
-    # TODO(clairbee): Use a CadQuery script to define the face of a slotted hole
-    type: basic
-    circle: {{ size / 2.0 }}
-  {% endfor %}
-{% endfor %}
-
-  # --- The same boundaries, drawn once instead of once per size ------------
-  #
-  # A sketch declared with parameters and read with expressions: one 'm' serves
-  # every size an interface below asks for, where the loop above has to write
-  # out one sketch per size in the list.
   m:
     desc: The boundary of an M%size% opening
     type: basic
-    # A 'basic' sketch has no script to hand its parameters to, so the
+    # A "basic" sketch has no script to hand its parameters to, so the
     # expression is how it reads them.
-    circle: "%size / 2%"
+    circle: "%size / 2%"  # radius
     parameters:
       size:
         type: float
@@ -49,17 +50,35 @@ sketches:
         type: float
         default: 10.0
 
+  # The sketch names this package has published, each an alias of one instance
+  # of the two above.
+{% for size in sizes %}
+  m{{ size }}: ":m;size={{ size }}"
+  {% for width in widths %}
+  m{{ size }}-slotted-{{ width }}: ":m-slotted;size={{ size }},width={{ width }}"
+  {% endfor %}
+{% endfor %}
 
 interfaces:
-{% for size in sizes %}
-  m{{ size }}:
-    desc: Abstract {{ size }}mm circular interface
+  m:
+    desc: Abstract %size%mm circular interface
     abstract: True
     ports:
-      m{{ size }}:
+      # The port carries the size in its name, the way it always has: the
+      # M4 interface has a port called "m4".
+      "m%size%":
         location: [[0, 0, 0], [0, 0, 1], 0] # redandant, for demonstration
-        sketch: m{{ size }}
+        sketch: m
+        params:
+          size: "%size%"
     parameters:
+      # What this interface is built from, declared the way a part declares a
+      # parameter and set by a reference: "m;size=4".
+      size:
+        type: float
+        default: 3.0
+      # ... and, in the same section, what a connection made through this
+      # interface may still do.
       turnZ:
         min: 0
         max: 360
@@ -68,142 +87,9 @@ interfaces:
       moveY: {}  # Hotizontal offset for openings of different sizes
       moveZ: {}  # Affset along the alignment axis
 
-  m{{ size }}-opening:
-    desc: Abstract {{ size }}mm circular opening
-    inherits:
-      m{{ size }}: opening
-    mates:
-      - m{{ size }}-opening
-
-  {% for depth in depths %}
-  m{{ size }}-hole-{{ depth }}:
-    desc: {{ depth }}mm deep hole of {{ size }}mm diameter
-    inherits:
-      m{{ size }}-opening: {{ depth }}mm-hole
-  {% endfor %}
-
-  m{{ size }}-thru:
-    desc: {{ size }}mm through hole
-    inherits:
-      m{{ size }}-opening: thru
-
-  {% for depth in depths %}
-  m{{ size }}-thru-{{ depth }}:
-    desc: {{ depth }}mm thick through hole of {{ size }}mm diameter
-    inherits:
-      m{{ size }}-thru: {{ depth }}mm
-
-  {% for width in widths %}
-  m{{ size }}-thru-{{ depth }}-slotted-{{ width }}:
-    desc: {{ depth }}mm thick through slotted hole {{ size }}mm deep, {{ width }}mm long
-    ports:
-      m{{ size }}:
-        sketch: m{{ size }}-slotted-{{ width }}
-  {% endfor %}
-  {% endfor %}
-
-  m{{ size }}-threaded-thru:
-    desc: {{ size }}mm threaded through hole
-    inherits:
-      m{{ size }}-opening: threaded-thru
-
-  {% for depth in depths %}
-  m{{ size }}-threaded-thru-{{ depth }}:
-    desc: {{ depth }}mm thick threaded through hole of {{ size }}mm diameter
-    inherits:
-      m{{ size }}-threaded-thru: {{ depth }}mm
-  {% endfor %}
-
-  {% for depth in depths %}
-  m{{ size }}-threaded-hole-{{ depth }}:
-    desc: {{ depth }}mm thick threaded through hole of {{ size }}mm diameter
-    inherits:
-      m{{ size }}-hole-{{depth}}: threaded
-  {% endfor %}
-
-  m{{ size }}-shaft:
-    desc: Abstract {{ size }}mm shaft
-    inherits:
-      m{{ size }}: shaft
-    mates:
-      - m{{ size }}-opening
-
-  {% for length in depths %}
-  m{{ size }}-shaft-{{ length }}:
-    desc: {{ length }}mm long {{ size }}mm shaft
-    inherits:
-      m{{ size }}-shaft: {{ length }}mm-long
-  {% endfor %}
-
-  m{{ size }}-screw:
-    desc: Abstract M{{ size }} screw
-    inherits:
-      m{{ size }}: screw
-    mates:
-      - m{{ size }}-opening
-
-  {% for length in depths %}
-  m{{ size }}-screw-{{ length }}:
-    desc: {{ length }}mm long M{{ size }} screw
-    inherits:
-      m{{ size }}-screw: {{ length }}mm-long
-    parameters:
-      moveZ:
-        max: {{ length - 2 }}  # TODO(clairbee): Is there an IEEE standard minimum depth?
-        min: 0
-        default: 0
-  {% endfor %}
-{% endfor %}
-
-  # --- The same family, declared once instead of once per size -------------
-  #
-  # Everything above is a Jinja2 loop writing out one interface per
-  # combination: 25 sizes times 20 depths times 16 widths, and a size, a depth
-  # or a width that is not in the three lists at the top of this file simply
-  # does not exist. What follows is the same family written parametrically -
-  # 'variables:' declares what each interface is built from, '%...%'
-  # substitutes the values, and a reference names them the way it names a
-  # parametrized part:
-  #
-  #     m-thru;size=4,depth=3       an M4 through hole in 3mm of material
-  #     m-screw;size=4,length=12    a 12mm long M4 screw
-  #     m-hole;size=2.5,depth=7.5   an M2.5 blind hole 7.5mm deep - a depth no list above has
-  #
-  # The enumerated names are not going anywhere: a package that names
-  # 'm3-thru-3' keeps working. The two families are separate sets of
-  # interfaces rather than two spellings of one, though, so a part implements
-  # one or the other and two parts that are to be connected use the same one.
-  #
-  # These need a PartCAD that has parametric interfaces (0.8.77 and later).
-  # The package does not declare that as its requirement, because declaring it
-  # would stop an older PartCAD from loading the enumerated interfaces above,
-  # which it handles perfectly well.
-
-  m:
-    desc: Abstract %size%mm circular interface
-    abstract: True
-    variables:
-      size:
-        type: float
-        default: 3.0
-    ports:
-      m:
-        location: [[0, 0, 0], [0, 0, 1], 0] # redundant, for demonstration
-        sketch: m
-        params:
-          size: "%size%"
-    parameters:
-      turnZ:
-        min: 0
-        max: 360
-        default: 0
-      moveX: {}  # Horizontal offset for openings of different sizes
-      moveY: {}  # Horizontal offset for openings of different sizes
-      moveZ: {}  # Offset along the alignment axis
-
   m-opening:
     desc: Abstract %size%mm circular opening
-    variables:
+    parameters:
       size: 3.0
     inherits:
       "m;size=%size%": opening
@@ -212,74 +98,133 @@ interfaces:
 
   m-hole:
     desc: "%depth%mm deep hole of %size%mm diameter"
-    variables:
+    parameters:
       size: 3.0
       depth: 3.0
     inherits:
       "m-opening;size=%size%": "%depth%mm-hole"
 
   m-thru:
-    desc: "%depth%mm thick through hole of %size%mm diameter"
-    variables:
+    desc: "%size%mm through hole"
+    parameters:
       size: 3.0
-      depth: 3.0
     inherits:
       "m-opening;size=%size%": thru
 
+  m-thru-depth:
+    desc: "%depth%mm thick through hole of %size%mm diameter"
+    parameters:
+      size: 3.0
+      depth: 3.0
+    inherits:
+      "m-thru;size=%size%": "%depth%mm"
+
   m-thru-slotted:
-    desc: "%depth%mm thick through slotted hole of %size%mm diameter, %width%mm long"
-    variables:
+    desc: "%depth%mm thick through slotted hole %size%mm deep, %width%mm long"
+    # TODO(clairbee): inherit "m-thru-depth" once the slot has a face of its own,
+    #                 and give it the freedom of movement a slot actually allows.
+    parameters:
       size: 3.0
       depth: 3.0
       width: 10.0
     ports:
-      m:
+      "m%size%":
         sketch: m-slotted
         params:
           size: "%size%"
           width: "%width%"
+
+  m-threaded-thru:
+    desc: "%size%mm threaded through hole"
     parameters:
-      # The slot is what the freedom of movement is for: a bolt through it may
-      # sit anywhere along what is left of the slot once the bolt is in it.
-      moveX: ["%-(width - size) / 2%", "%(width - size) / 2%", 0]
+      size: 3.0
+    inherits:
+      "m-opening;size=%size%": threaded-thru
+
+  m-threaded-thru-depth:
+    desc: "%depth%mm thick threaded through hole of %size%mm diameter"
+    parameters:
+      size: 3.0
+      depth: 3.0
+    inherits:
+      "m-threaded-thru;size=%size%": "%depth%mm"
 
   m-threaded-hole:
-    desc: "%depth%mm deep threaded hole of %size%mm diameter"
-    variables:
+    # The wording is the one this package has always used for these.
+    desc: "%depth%mm thick threaded through hole of %size%mm diameter"
+    parameters:
       size: 3.0
       depth: 3.0
     inherits:
       "m-hole;size=%size%,depth=%depth%": threaded
 
-  m-threaded-thru:
-    desc: "%depth%mm thick threaded through hole of %size%mm diameter"
-    variables:
-      size: 3.0
-      depth: 3.0
-    inherits:
-      "m-thru;size=%size%,depth=%depth%": threaded
-
   m-shaft:
-    desc: "%length%mm long %size%mm shaft"
-    variables:
+    desc: Abstract %size%mm shaft
+    parameters:
       size: 3.0
-      length: 10.0
     inherits:
       "m;size=%size%": shaft
     mates:
       - "m-opening;size=%size%"
 
-  m-screw:
-    desc: "%length%mm long M%size% screw"
-    variables:
+  m-shaft-length:
+    desc: "%length%mm long %size%mm shaft"
+    parameters:
       size: 3.0
-      length: 6.0
+      length: 10.0
+    inherits:
+      "m-shaft;size=%size%": "%length%mm-long"
+
+  m-screw:
+    desc: Abstract M%size% screw
+    parameters:
+      size: 3.0
     inherits:
       "m;size=%size%": screw
     mates:
       - "m-opening;size=%size%"
+
+  m-screw-length:
+    desc: "%length%mm long M%size% screw"
     parameters:
+      size: 3.0
+      length: 6.0
       moveZ:
         max: "%length - 2%"  # TODO(clairbee): Is there an IEEE standard minimum depth?
         min: 0
         default: 0
+    inherits:
+      "m-screw;size=%size%": "%length%mm-long"
+
+  # The interface names this package has published. Each is an alias of one
+  # instance of the family above: the same ports under the same names, mating
+  # with the same things. They are not deprecated -- a name is a contract.
+{% for size in sizes %}
+  m{{ size }}: "m;size={{ size }}"
+  m{{ size }}-opening: "m-opening;size={{ size }}"
+  {% for depth in depths %}
+  m{{ size }}-hole-{{ depth }}: "m-hole;size={{ size }},depth={{ depth }}"
+  {% endfor %}
+  m{{ size }}-thru: "m-thru;size={{ size }}"
+  {% for depth in depths %}
+  m{{ size }}-thru-{{ depth }}: "m-thru-depth;size={{ size }},depth={{ depth }}"
+  {% for width in widths %}
+  m{{ size }}-thru-{{ depth }}-slotted-{{ width }}: "m-thru-slotted;size={{ size }},depth={{ depth }},width={{ width }}"
+  {% endfor %}
+  {% endfor %}
+  m{{ size }}-threaded-thru: "m-threaded-thru;size={{ size }}"
+  {% for depth in depths %}
+  m{{ size }}-threaded-thru-{{ depth }}: "m-threaded-thru-depth;size={{ size }},depth={{ depth }}"
+  {% endfor %}
+  {% for depth in depths %}
+  m{{ size }}-threaded-hole-{{ depth }}: "m-threaded-hole;size={{ size }},depth={{ depth }}"
+  {% endfor %}
+  m{{ size }}-shaft: "m-shaft;size={{ size }}"
+  {% for length in depths %}
+  m{{ size }}-shaft-{{ length }}: "m-shaft-length;size={{ size }},length={{ length }}"
+  {% endfor %}
+  m{{ size }}-screw: "m-screw;size={{ size }}"
+  {% for length in depths %}
+  m{{ size }}-screw-{{ length }}: "m-screw-length;size={{ size }},length={{ length }}"
+  {% endfor %}
+{% endfor %}
