@@ -44,7 +44,9 @@ parts:
 
 The two sketches that draw the port boundaries, ``m`` and ``m-slotted``, are
 parametric in the same way, and the per-size sketch names (``m4``,
-``m4-slotted-30``) are aliases of them.
+``m4-slotted-30``) are aliases of them. ``m-slotted`` now draws an actual slot --
+a rectangle with semicircular ends -- where it used to draw a plain circle and
+carry a TODO about it; PartCAD's "basic" sketches have a ``slot`` outline.
 
 **Nothing published has been withdrawn.** An alias *is* the interface it names:
 the same ports under the same names, a drop-in for it, mating with whatever it

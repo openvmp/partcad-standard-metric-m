@@ -39,9 +39,13 @@ sketches:
 
   m-slotted:
     desc: The boundary of an M%size% opening slotted %width%mm along X
-    # TODO(clairbee): Use a CadQuery script to define the face of a slotted hole
     type: basic
-    circle: "%size / 2%"
+    # A real slot: a rectangle with semicircular ends, two arcs and two lines.
+    # "length" is measured over the ends, which is what this package's "width"
+    # has always meant - "m4-thru-3-slotted-30" is 30mm end to end.
+    slot:
+      length: "%width%"
+      width: "%size%"
     parameters:
       size:
         type: float
@@ -121,8 +125,11 @@ interfaces:
 
   m-thru-slotted:
     desc: "%depth%mm thick through slotted hole %size%mm deep, %width%mm long"
-    # TODO(clairbee): inherit "m-thru-depth" once the slot has a face of its own,
-    #                 and give it the freedom of movement a slot actually allows.
+    # TODO(clairbee): inherit "m-thru-depth", and give this the freedom of
+    #                 movement a slot actually allows - a bolt through one may
+    #                 sit anywhere along what is left of it. Both change ports
+    #                 or behaviour that this package has published, so they are
+    #                 a change of their own rather than a detail of this one.
     parameters:
       size: 3.0
       depth: 3.0
