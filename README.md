@@ -5,7 +5,7 @@ every metric size.
 
 ## How it is declared
 
-On PartCAD 0.8.77 and newer the family is declared **once**, parametrically, and
+On PartCAD 0.8.78 and newer the family is declared **once**, parametrically, and
 every name this package has ever published is an alias of one instance of it.
 (Older PartCADs read the same package differently; see below.) The lists of sizes, depths and
 widths at the top of ``partcad.yaml`` now say only which combinations get a
@@ -59,12 +59,12 @@ of movement are unchanged.
 
 ### Two PartCADs, one package
 
-Parametric interfaces and ``alias:`` arrived in PartCAD 0.8.77, and raising this
+Parametric interfaces and ``alias:`` arrived in PartCAD 0.8.78, and raising this
 package's ``partcad:`` requirement to say so would have taken it away from
 everyone who has not updated. So ``partcad.yaml`` carries **both** forms and the
 template picks:
 
-* **PartCAD 0.8.77 and newer** get the family above -- thirteen parametric
+* **PartCAD 0.8.78 and newer** get the family above -- fourteen parametric
   interfaces, every published name an alias, and any size, depth, width or
   length reachable whether or not a list names it.
 * **Anything older** gets exactly what this package has always published, down
@@ -95,7 +95,7 @@ were.
 This package has always declared how far a screw may travel along its own axis
 (``moveZ: {max: length - 2}`` on every ``mN-screw-L``), and PartCAD has always
 discarded it, because an inherited declaration used to overwrite the interface's
-own. PartCAD 0.8.77 reads it, so 425 of these interfaces gain the movement they
+own. PartCAD 0.8.78 reads it, so 425 of these interfaces gain the movement they
 were written to have -- on the older branch too, since it is the *reader* that
 changed rather than the declaration.
 
