@@ -51,6 +51,8 @@ parts:
 | ``m-threaded-shaft-length`` | ``size``, ``length`` | ``m4-threaded-shaft-10`` |
 | ``m-screw`` | ``size`` | ``m4-screw`` |
 | ``m-screw-length`` | ``size``, ``length`` | ``m4-screw-12`` |
+| ``m-bolt`` | ``size`` | ``m4-bolt`` |
+| ``m-bolt-length`` | ``size``, ``length`` | ``m4-bolt-12`` |
 
 The sketches that draw the port boundaries are parametric in the same way, and
 the per-size sketch names (``m4``, ``m4-clearance``, ``m4-pilot``,
@@ -117,6 +119,11 @@ clearance hole from a tapped one (see **Three holes, not one** below):
   declare a ``threadStep``, which they never did -- see **How far a turn takes
   it** below. A connection that used to be told the thread advances nothing per
   turn is now told the ISO 261 coarse pitch.
+* **``m*-screw`` means the kind that cuts its own thread.** Nothing it mated
+  before stopped mating -- its published mate, the clearance hole, is still
+  there and it gained the tapping drill -- but ``m*-bolt`` is now the name for
+  the fastener that matches an existing thread, and it is the one to use for a
+  machine screw going into a tapped hole. See **What mates what** below.
 
 Older clients see none of this -- their openings are exactly as they were, and
 their threads still advance by nothing. Carrying the pitch over to that branch
@@ -246,14 +253,15 @@ Five interfaces declare ``mates:`` and everything else inherits the ability
 through its compatibility closure, so what can be connected to what is decided
 entirely by which of six **kinds** each end is:
 
-|  | clearance | tapped | pilot | screw | shaft | threaded shaft |
-| --- | --- | --- | --- | --- | --- | --- |
-| **clearance** | X | X | X | X | X | X |
-| **tapped** | X | X | · | X | · | X |
-| **pilot** | X | · | X | · | · | · |
-| **screw** | X | X | · | · | · | · |
-| **shaft** | X | · | · | · | · | · |
-| **threaded shaft** | X | X | · | · | · | · |
+|  | clearance | tapped | pilot | screw | bolt | shaft | threaded shaft |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **clearance** | X | X | X | X | X | X | X |
+| **tapped** | X | · | · | · | X | · | X |
+| **pilot** | X | · | X | X | · | · | · |
+| **screw** | X | · | X | · | · | · | · |
+| **bolt** | X | X | · | · | · | · | · |
+| **shaft** | X | · | · | · | · | · | · |
+| **threaded shaft** | X | X | · | · | · | · | · |
 
 * **clearance** -- ``m*-opening``, ``m*-thru``, ``m*-thru-*``, ``m*-hole-*``,
   ``m*-thru-*-slotted-*``
@@ -262,6 +270,7 @@ entirely by which of six **kinds** each end is:
 * **pilot** -- ``m*-pilot-opening``, ``m*-pilot-thru``, ``m*-pilot-thru-*``,
   ``m*-pilot-hole-*``
 * **screw** -- ``m*-screw``, ``m*-screw-*``
+* **bolt** -- ``m*-bolt``, ``m*-bolt-*``
 * **shaft** -- ``m*-shaft``, ``m*-shaft-*``
 * **threaded shaft** -- ``m*-threaded-shaft``, ``m*-threaded-shaft-*``
 
@@ -269,13 +278,27 @@ entirely by which of six **kinds** each end is:
 screw does not mate an M5 opening.
 
 Reading it: a clearance hole is the through-feature of a joint, so it takes
-anything. A screw goes into a clearance hole or a tapped one, never into a
-tapping drill, which has no thread yet. A threaded shaft -- a stud, a length of
-rod -- is a shaft with that one addition, so it does both. A plain shaft only
-passes through a clearance hole. Two male features never meet, which is why
-screw-screw, shaft-shaft, stud-stud and every pairing of them is blank; and a
-pilot hole meets only another pilot hole and the clearance hole something is
-drilled through.
+anything.
+
+**A screw cuts its thread and a bolt finds one**, which is the whole of the
+difference between them and decides where each may go. A screw is driven into a
+tapping drill and makes the thread it then holds; a bolt goes into a thread that
+already exists and would strip a tapping drill. So screw-pilot and bolt-tapped
+are the pairs, and screw-tapped and bolt-pilot are not. The screw's mating with
+the pilot hole carries ``selfScrew: true``, which is what tells PartCAD the two
+ends need not agree about the thread -- and it sits on the *mating* rather than
+on the screw, because the same screw cuts nothing on its way through a clearance
+hole.
+
+**Two tapped holes do not mate**, which they used to. Threads cut separately
+never line up; something has to run through both, and that something is a bolt,
+a stud, or the clearance hole of the part being held down.
+
+A threaded shaft -- a stud, a length of rod -- is a shaft that finds a thread, so
+it goes where a bolt goes. A plain shaft only passes through a clearance hole.
+Two male features never meet, which is why screw-bolt, shaft-shaft, stud-stud
+and every pairing of them is blank; and a pilot hole meets a screw, another
+pilot hole, and the clearance hole something is drilled through.
 
 That clearance-hole entry for a shaft is an approximation worth knowing as one.
 ISO 273 sizes a hole for a *fastener*; the fit between a shaft and its bore is
@@ -385,6 +408,13 @@ published, unchanged.
 
   A screw of the specified length. Defines the parameter to specify how deep it goes in.
   E.g. ``m4-screw-12`` for a 12mm long M4 screw.
+
+* ``m*-bolt``, ``m*-bolt-*``
+
+  A bolt: a fastener that *matches* a thread where a screw *cuts* one. It goes
+  into a tapped hole and never into a tapping drill, and both ends of the
+  connection are checked against each other, which a screw's thread is exempt
+  from. E.g. ``m4-bolt-12`` for a 12mm long M4 bolt.
 
 ## Sizes that have no name of their own
 

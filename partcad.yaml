@@ -348,11 +348,10 @@ interfaces:
     # No boundary of its own: the thread's major diameter is what "m" draws.
     inherits:
       "m;size=%size%": opening
-    # Only itself: what else a tapped opening mates is declared from the other
-    # side ("m-opening" and "m-screw" below both name it), and declaring it
-    # twice would have two interfaces instantiate each other to say it.
-    mates:
-      - "m-tapped-opening;size=%size%"
+    # Nothing of its own, and in particular not another tapped opening: two
+    # threads that were cut separately do not meet. Something has to run
+    # through both, and that something - a bolt, a stud, or the clearance hole
+    # of the part being held down - names this from its own side.
 
   m-pilot-opening:
     desc: ISO 2306 tapping drill opening for an M%size% coarse thread
@@ -547,18 +546,55 @@ interfaces:
     inherits:
       "m-threaded-shaft;size=%size%": "%length%mm-long"
 
+  # A screw cuts the thread it then holds, so what it goes into is a tapping
+  # drill rather than a thread that has to match. A bolt is the other half of
+  # that distinction and is declared below.
   m-screw:
     desc: Abstract M%size% screw
     parameters:
       size: 3.0
-    # The same ISO 261 coarse pitch the tapped opening declares, which is what
-    # lets PartCAD check that the two ends of a screwed connection agree.
+    # The ISO 261 coarse pitch. It is the thread the screw *makes*, so nothing
+    # has to agree with it - which is what "selfScrew" on the mating says.
     threadStep: "%{{ coarse_pitch }}%"
     inherits:
       "m;size=%size%": screw
     mates:
+      # The hole it passes through on its way in.
+      "m-opening;size=%size%": {}
+      # And the one it is driven into. "selfScrew" is on the mating rather than
+      # on this interface because it is true of the pairing: the same screw
+      # cuts nothing on its way through the clearance hole above.
+      "m-pilot-opening;size=%size%":
+        selfScrew: true
+
+  # A bolt matches a thread instead of cutting one, which is the whole of the
+  # difference: it goes into a tapped hole and never into a tapping drill.
+  m-bolt:
+    desc: Abstract M%size% bolt
+    parameters:
+      size: 3.0
+    # The thread it has to *find*, so both ends of the connection are checked
+    # against each other - which is what a screw's thread is exempt from.
+    threadStep: "%{{ coarse_pitch }}%"
+    inherits:
+      "m;size=%size%": bolt
+    mates:
       - "m-opening;size=%size%"
       - "m-tapped-opening;size=%size%"
+
+  m-bolt-length:
+    desc: "%length%mm long M%size% bolt"
+    parameters:
+      size: 3.0
+      length: 6.0
+      moveZ:
+        # As for a screw: how far it may be driven in, clamped at zero for the
+        # 1mm lengths the lists below also name.
+        max: "%max(length - 2, 0)%"
+        min: 0
+        default: 0
+    inherits:
+      "m-bolt;size=%size%": "%length%mm-long"
 
   m-screw-length:
     desc: "%length%mm long M%size% screw"
@@ -636,6 +672,10 @@ interfaces:
   m{{ size }}-screw: "m-screw;size={{ size }}"
   {% for length in depths %}
   m{{ size }}-screw-{{ length }}: "m-screw-length;size={{ size }},length={{ length }}"
+  {% endfor %}
+  m{{ size }}-bolt: "m-bolt;size={{ size }}"
+  {% for length in depths %}
+  m{{ size }}-bolt-{{ length }}: "m-bolt-length;size={{ size }},length={{ length }}"
   {% endfor %}
 {% endfor %}
 {% else %}
