@@ -5,7 +5,7 @@ partcad: ">=0.6.29"
 
 # This package is read by two PartCADs.
 #
-# Since 0.8.77 an interface can be parametric - declared once and asked for with
+# Since 0.8.78 an interface can be parametric - declared once and asked for with
 # values, "m-thru-depth;size=4,depth=3" - and an "alias:" can publish one
 # instance of it under a name of its own. So the family below is declared once
 # and every name this package has ever published is an alias of one instance,
@@ -23,6 +23,14 @@ partcad: ">=0.6.29"
 {% set widths = [1, 1.5, 2, 2.5, 4, 6, 8, 10, 12, 16, 20, 24, 25, 30, 32, 40] %}
 {% set depths = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 7, 8, 9, 10, 12, 14, 16, 20, 22] %}
 
+# 0.8.77 rather than 0.8.78, and the two are not a contradiction. What decides
+# this is "is defined": those variables exist only in a PartCAD that has the
+# feature, so the comparison is a second opinion rather than the test. It names
+# the *development* version the feature landed in, which is one lower than the
+# first release carrying it, because a release is cut by bumping the version
+# after the merge. Naming 0.8.78 instead would send a devel build sitting at
+# 0.8.77 *with* the feature down the legacy branch - the feature present and
+# silently unused - so the lower number is the safe one in both directions.
 {% set parametric = partcad_version_major is defined and partcad_version_at_least("0.8.77") %}
 
 sketches:
