@@ -447,8 +447,11 @@ interfaces:
       "m-threaded-thru;size=%size%": "%depth%mm"
 
   m-threaded-hole:
-    # The wording is the one this package has always used for these.
-    desc: "%depth%mm thick threaded through hole of %size%mm diameter"
+    # This is a *blind* hole - it inherits "m-tapped-hole", whose instance is
+    # "%depth%mm-hole" - and the wording this package has always used for it
+    # said "through hole", which is what "m-threaded-thru-%depth%" above is.
+    # One of the two had to be wrong and it was this one.
+    desc: "%depth%mm deep threaded M%size% hole"
     parameters:
       size: 3.0
       depth: 3.0
@@ -482,8 +485,23 @@ interfaces:
     desc: Abstract %size%mm shaft
     parameters:
       size: 3.0
+    # Several things sit along one shaft - a stack of pulleys, a row of
+    # brackets - and that is what separates it from every other interface
+    # here, where a second item on one port is a mistake worth reporting.
+    multiConnect: true
     inherits:
       "m;size=%size%": shaft
+    # A hole it passes through, and nothing else.
+    #
+    # Not another shaft, and not a screw: two male features do not meet. Not a
+    # tapped opening either - a plain shaft has no thread to engage, and a
+    # thread is what "m-threaded-shaft" below adds. And not a tapping drill,
+    # which is not a hole to assemble through at all: it is the hole a thread
+    # has yet to be cut into.
+    #
+    # The clearance hole is an approximation and worth knowing as one: ISO 273
+    # sizes a hole for a *fastener*, while the fit between a shaft and its bore
+    # is ISO 286, which this package has no interface for.
     mates:
       - "m-opening;size=%size%"
 
@@ -494,6 +512,40 @@ interfaces:
       length: 10.0
     inherits:
       "m-shaft;size=%size%": "%length%mm-long"
+
+  # A stud, a threaded rod, the threaded end of anything: a shaft that can be
+  # screwed into what it meets rather than only passed through it.
+  m-threaded-shaft:
+    desc: Abstract threaded M%size% shaft
+    parameters:
+      size: 3.0
+    # The same ISO 261 coarse pitch the screw and the tapped opening declare,
+    # so that a stud and the hole it is driven into are checked against each
+    # other the way a screw and its hole are.
+    threadStep: "%{{ coarse_pitch }}%"
+    inherits:
+      "m-shaft;size=%size%": threaded
+    # It is a shaft, so the clearance hole it passes through comes with the
+    # inheritance, as does "multiConnect" - a threaded rod carrying a stack of
+    # plates is the same arrangement. What the thread adds is the one thing a
+    # plain shaft may not do: be driven into a tapped hole.
+    mates:
+      - "m-tapped-opening;size=%size%"
+
+  m-threaded-shaft-length:
+    desc: "%length%mm long threaded M%size% shaft"
+    parameters:
+      size: 3.0
+      length: 10.0
+      moveZ:
+        # How far it may be driven into what it is screwed into - the question
+        # a screw's length asks, with the same clamp for the 1mm lengths the
+        # lists below also name.
+        max: "%max(length - 2, 0)%"
+        min: 0
+        default: 0
+    inherits:
+      "m-threaded-shaft;size=%size%": "%length%mm-long"
 
   m-screw:
     desc: Abstract M%size% screw
@@ -561,6 +613,9 @@ interfaces:
   m{{ size }}-threaded-thru-{{ depth }}: "m-threaded-thru-depth;size={{ size }},depth={{ depth }}"
   {% endfor %}
   {% for depth in depths %}
+  m{{ size }}-tapped-hole-{{ depth }}: "m-tapped-hole;size={{ size }},depth={{ depth }}"
+  {% endfor %}
+  {% for depth in depths %}
   m{{ size }}-threaded-hole-{{ depth }}: "m-threaded-hole;size={{ size }},depth={{ depth }}"
   {% endfor %}
   m{{ size }}-pilot-thru: "m-pilot-thru;size={{ size }}"
@@ -573,6 +628,10 @@ interfaces:
   m{{ size }}-shaft: "m-shaft;size={{ size }}"
   {% for length in depths %}
   m{{ size }}-shaft-{{ length }}: "m-shaft-length;size={{ size }},length={{ length }}"
+  {% endfor %}
+  m{{ size }}-threaded-shaft: "m-threaded-shaft;size={{ size }}"
+  {% for length in depths %}
+  m{{ size }}-threaded-shaft-{{ length }}: "m-threaded-shaft-length;size={{ size }},length={{ length }}"
   {% endfor %}
   m{{ size }}-screw: "m-screw;size={{ size }}"
   {% for length in depths %}

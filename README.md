@@ -41,12 +41,14 @@ parts:
 | ``m-threaded-thru`` | ``size`` | ``m4-threaded-thru`` |
 | ``m-threaded-thru-depth`` | ``size``, ``depth`` | ``m4-threaded-thru-3`` |
 | ``m-threaded-hole`` | ``size``, ``depth`` | ``m4-threaded-hole-3`` |
-| ``m-tapped-hole`` | ``size``, ``depth`` | -- |
+| ``m-tapped-hole`` | ``size``, ``depth`` | ``m4-tapped-hole-3`` |
 | ``m-pilot-thru`` | ``size`` | ``m4-pilot-thru`` |
 | ``m-pilot-thru-depth`` | ``size``, ``depth`` | ``m4-pilot-thru-3`` |
 | ``m-pilot-hole`` | ``size``, ``depth`` | ``m4-pilot-hole-3`` |
 | ``m-shaft`` | ``size`` | ``m4-shaft`` |
 | ``m-shaft-length`` | ``size``, ``length`` | ``m4-shaft-10`` |
+| ``m-threaded-shaft`` | ``size`` | ``m4-threaded-shaft`` |
+| ``m-threaded-shaft-length`` | ``size``, ``length`` | ``m4-threaded-shaft-10`` |
 | ``m-screw`` | ``size`` | ``m4-screw`` |
 | ``m-screw-length`` | ``size``, ``length`` | ``m4-screw-12`` |
 
@@ -152,9 +154,10 @@ and newer each kind is its own opening and measures what it should:
 * ``m*-opening``, ``m*-hole-*``, ``m*-thru``, ``m*-thru-*`` and the slotted ones
   are **clearance** holes. This is the one thing about the published names that
   changed, and it is why: they are the holes a screw goes through.
-* ``m*-tapped-opening``, ``m*-threaded-thru``, ``m*-threaded-thru-*`` and
-  ``m*-threaded-hole-*`` are **tapped**, at the nominal size -- unchanged,
-  because the nominal size was always the right answer for these.
+* ``m*-tapped-opening``, ``m*-tapped-hole-*``, ``m*-threaded-thru``,
+  ``m*-threaded-thru-*`` and ``m*-threaded-hole-*`` are **tapped**, at the
+  nominal size -- unchanged, because the nominal size was always the right
+  answer for these.
 * ``m*-pilot-opening``, ``m*-pilot-thru``, ``m*-pilot-thru-*`` and
   ``m*-pilot-hole-*`` are the **pilot** hole. They are new.
 
@@ -237,6 +240,47 @@ do not mate each other.
 
 This is on the newer branch only, like everything else in this section.
 
+### What mates what
+
+Five interfaces declare ``mates:`` and everything else inherits the ability
+through its compatibility closure, so what can be connected to what is decided
+entirely by which of six **kinds** each end is:
+
+|  | clearance | tapped | pilot | screw | shaft | threaded shaft |
+| --- | --- | --- | --- | --- | --- | --- |
+| **clearance** | X | X | X | X | X | X |
+| **tapped** | X | X | · | X | · | X |
+| **pilot** | X | · | X | · | · | · |
+| **screw** | X | X | · | · | · | · |
+| **shaft** | X | · | · | · | · | · |
+| **threaded shaft** | X | X | · | · | · | · |
+
+* **clearance** -- ``m*-opening``, ``m*-thru``, ``m*-thru-*``, ``m*-hole-*``,
+  ``m*-thru-*-slotted-*``
+* **tapped** -- ``m*-tapped-opening``, ``m*-tapped-hole-*``,
+  ``m*-threaded-thru``, ``m*-threaded-thru-*``, ``m*-threaded-hole-*``
+* **pilot** -- ``m*-pilot-opening``, ``m*-pilot-thru``, ``m*-pilot-thru-*``,
+  ``m*-pilot-hole-*``
+* **screw** -- ``m*-screw``, ``m*-screw-*``
+* **shaft** -- ``m*-shaft``, ``m*-shaft-*``
+* **threaded shaft** -- ``m*-threaded-shaft``, ``m*-threaded-shaft-*``
+
+``m*`` itself is abstract and mates nothing. Everything is size-scoped: an M4
+screw does not mate an M5 opening.
+
+Reading it: a clearance hole is the through-feature of a joint, so it takes
+anything. A screw goes into a clearance hole or a tapped one, never into a
+tapping drill, which has no thread yet. A threaded shaft -- a stud, a length of
+rod -- is a shaft with that one addition, so it does both. A plain shaft only
+passes through a clearance hole. Two male features never meet, which is why
+screw-screw, shaft-shaft, stud-stud and every pairing of them is blank; and a
+pilot hole meets only another pilot hole and the clearance hole something is
+drilled through.
+
+That clearance-hole entry for a shaft is an approximation worth knowing as one.
+ISO 273 sizes a hole for a *fastener*; the fit between a shaft and its bore is
+ISO 286, and this package has no interface for one.
+
 ### Eleven sizes that were missing
 
 ISO 273 tabulates 35 nominal sizes between M1 and M64 and this package named 24
@@ -310,13 +354,28 @@ published, unchanged.
   A tapping drill of the corresponding depth (not a thru).
   E.g. ``m4-pilot-hole-8`` for the 3.3mm hole an 8mm deep M4 thread is cut into.
 
+* ``m*-tapped-hole-*``
+
+  A tapped hole of the corresponding depth (not a thru), at the nominal size.
+  ``m*-threaded-hole-*`` is the same hole named the way this package has always
+  named it.
+
 * ``m*-shaft``
 
-  An abstract class for shafts. No thread.
+  An abstract class for shafts. No thread. Several parts may sit along one
+  (``multiConnect``), which no other interface here allows.
 
 * ``m*-shaft-*``
 
   A shaft of the specified length. No thread.
+
+* ``m*-threaded-shaft``, ``m*-threaded-shaft-*``
+
+  A stud, a threaded rod, the threaded end of anything: a shaft that can be
+  screwed into what it meets rather than only passed through it. Everything a
+  shaft is, plus a thread -- so it still carries several parts along it, and it
+  additionally mates a tapped opening.
+  E.g. ``m4-threaded-shaft-30`` for a 30mm length of M4 rod.
 
 * ``m*-screw``
 
