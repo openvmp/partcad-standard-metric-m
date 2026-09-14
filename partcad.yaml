@@ -33,11 +33,158 @@ partcad: ">=0.6.29"
 # silently unused - so the lower number is the safe one in both directions.
 {% set parametric = partcad_version_major is defined and partcad_version_at_least("0.8.77") %}
 
+# What a hole for an M<d> screw actually measures, which is not <d>.
+#
+# ISO 273's clearance hole - the hole a screw PASSES THROUGH - in the three
+# series it defines, toleranced H12, H13 and H14 respectively:
+#
+#   d: [fine, medium, coarse]
+#
+# The standard's whole table, M1 to M150, so that a size larger than any this
+# package names a family for is still the standard's number rather than an
+# extrapolation. It has no row for M9, M11 or M32, and that is the standard's
+# own gap rather than an omission here.
+{% set clearance = {
+  1:    [1.1,  1.2,  1.3 ],
+  1.2:  [1.3,  1.4,  1.5 ],
+  1.4:  [1.5,  1.6,  1.8 ],
+  1.6:  [1.7,  1.8,  2   ],
+  1.8:  [2,    2.1,  2.2 ],
+  2:    [2.2,  2.4,  2.6 ],
+  2.5:  [2.7,  2.9,  3.1 ],
+  3:    [3.2,  3.4,  3.6 ],
+  3.5:  [3.7,  3.9,  4.2 ],
+  4:    [4.3,  4.5,  4.8 ],
+  4.5:  [4.8,  5,    5.3 ],
+  5:    [5.3,  5.5,  5.8 ],
+  6:    [6.4,  6.6,  7   ],
+  7:    [7.4,  7.6,  8   ],
+  8:    [8.4,  9,    10  ],
+  10:   [10.5, 11,   12  ],
+  12:   [13,   13.5, 14.5],
+  14:   [15,   15.5, 16.5],
+  16:   [17,   17.5, 18.5],
+  18:   [19,   20,   21  ],
+  20:   [21,   22,   24  ],
+  22:   [23,   24,   26  ],
+  24:   [25,   26,   28  ],
+  27:   [28,   30,   32  ],
+  30:   [31,   33,   35  ],
+  32:   [33,   35,   37  ],
+  33:   [34,   36,   38  ],
+  36:   [37,   39,   42  ],
+  39:   [40,   42,   45  ],
+  42:   [43,   45,   48  ],
+  45:   [46,   48,   52  ],
+  48:   [50,   52,   56  ],
+  52:   [54,   56,   62  ],
+  56:   [58,   62,   66  ],
+  60:   [62,   66,   70  ],
+  64:   [66,   70,   74  ],
+  68:   [70,   74,   78  ],
+  72:   [74,   78,   82  ],
+  76:   [78,   82,   86  ],
+  80:   [82,   86,   91  ],
+  85:   [87,   91,   96  ],
+  90:   [93,   96,   101 ],
+  95:   [98,   101,  107 ],
+  100:  [104,  107,  112 ],
+  105:  [109,  112,  117 ],
+  110:  [114,  117,  122 ],
+  115:  [119,  122,  127 ],
+  120:  [124,  127,  132 ],
+  125:  [129,  132,  137 ],
+  130:  [134,  137,  144 ],
+  140:  [144,  147,  155 ],
+  150:  [155,  158,  165 ],
+} %}
+
+# ISO 2306's tapping drill - the hole a thread is CUT INTO before it is tapped -
+# beside the ISO 261 coarse pitch it is the drill for:
+#
+#   d: [tapping drill, coarse pitch]
+#
+# The drill is not "d minus the pitch": the standard rounds that to a drill
+# somebody owns, and the difference is real - an M12x1.75 is drilled 10.2 rather
+# than 10.25, an M4.5x0.75 3.7 rather than 3.75. Both columns end at M68, which
+# is where ISO 261's coarse series ends.
+#
+# The pitch is the second thing this package owes PartCAD and never gave it. An
+# interface carries a "threadStep" - how far a connection made through it
+# advances per turn - which is what tells an assembly that driving an M4 screw
+# home is eight turns rather than five, and every interface here left it unset.
+# It is declared below on the two that actually have a thread: the tapped
+# opening and the screw.
+#
+# A tapped hole itself is in neither column: it measures the thread's major
+# diameter, which is d, and that is the one case where the nominal size is the
+# answer. Its minor diameter is d - 1.082 532 P (ISO 68-1's basic profile,
+# D1 = D - 2 x 5/8 H with H = P sqrt(3)/2), which is what the drills above sit
+# just above - they leave about three quarters of the thread depth, which is
+# what tapping a full-depth thread would cost in torque and broken taps.
+# Nothing here is toleranced: ISO 965 is where a tapped hole's limits live, and
+# a sketch is one circle rather than a band, so these are the basic sizes.
+{% set tapping = {
+  1: [0.75, 0.25],    1.1: [0.85, 0.25],  1.2: [0.95, 0.25],  1.4: [1.1, 0.3],
+  1.6: [1.25, 0.35],  1.8: [1.45, 0.35],  2: [1.6, 0.4],      2.2: [1.75, 0.45],
+  2.5: [2.05, 0.45],  3: [2.5, 0.5],      3.5: [2.9, 0.6],    4: [3.3, 0.7],
+  4.5: [3.7, 0.75],   5: [4.2, 0.8],      6: [5, 1],          7: [6, 1],
+  8: [6.8, 1.25],     9: [7.8, 1.25],     10: [8.5, 1.5],     11: [9.5, 1.5],
+  12: [10.2, 1.75],   14: [12, 2],        16: [14, 2],        18: [15.5, 2.5],
+  20: [17.5, 2.5],    22: [19.5, 2.5],    24: [21, 3],        27: [24, 3],
+  30: [26.5, 3.5],    32: [28.5, 3.5],    33: [29.5, 3.5],    36: [32, 4],
+  39: [35, 4],        42: [37.5, 4.5],    45: [40.5, 4.5],    48: [43, 5],
+  52: [47, 5],        56: [50.5, 5.5],    60: [54.5, 5.5],    64: [58, 6],
+  68: [62, 6],
+} %}
+
+# M32 is in both tables and in neither ISO 273 nor ISO 2306. It is an ISO 261
+# third-choice thread that this package has published since before any of this,
+# so leaving it to round up to M33's row would quietly loosen a size somebody is
+# already using. Its clearances are its neighbours' offsets - M30 and M33 are
+# both d+1 / d+3 / d+5 - and its drill is d - P. Its *pitch* is not
+# extrapolated: M32x3.5 is ISO 261's own, which is why the drill can be worked
+# out at all. Those four numbers are the only ones above that no standard
+# states.
+
+# The sizes that get a family of names of their own. The eleven ISO 273
+# tabulates that the older list never named are new here, and they are named on
+# the parametric branch only: the older branch is what was published and stays
+# exactly that. Anything else the tables cover - an M9, an M80 - is reachable by
+# asking for it.
+{% set iso273_sizes = [1.8, 4.5, 7, 18, 22, 27, 33, 39, 45, 52, 60] %}
+{% set all_sizes = (sizes + iso273_sizes) | sort %}
+
+# Each column of those tables, read as one PartCAD expression over "size": the
+# tabulated value for the first size the hole is not bigger than, so a size a
+# standard does not list rounds UP to the next one it does and a clearance hole
+# is never returned smaller than the standard's. Past the end of a table the
+# last band's offset carries on, which is extrapolation and is the only thing
+# in these expressions that is.
+#
+# Built by appending to a list rather than by a macro, because a macro's body is
+# literal text at the top level of this file and "pc lint" - which reads
+# partcad.yaml as YAML with the Jinja2 masked out - has to see nothing there.
+{% set clearances = [("fine", 0, "size + 5", "H12"), ("medium", 1, "size + 8", "H13"), ("coarse", 2, "size + 15", "H14")] %}
+{% set bores = [] %}
+{% for fit, index, beyond, tolerance in clearances %}
+{% set parts = [] %}
+{% for d in clearance %}{% set _ = parts.append(clearance[d][index] ~ " if size <= " ~ d) %}{% endfor %}
+{% set _ = bores.append("diameter if diameter > 0 else (" ~ (parts | join(" else ")) ~ " else " ~ beyond ~ ")") %}
+{% endfor %}
+{% set parts = [] %}
+{% for d in tapping %}{% set _ = parts.append(tapping[d][0] ~ " if size <= " ~ d) %}{% endfor %}
+{% set tabulated = "(" ~ (parts | join(" else ")) ~ " else size - 6)" %}
+{% set drill = "drill if drill > 0 else (size - pitch if pitch > 0 else " ~ tabulated ~ ")" %}
+{% set parts = [] %}
+{% for d in tapping %}{% set _ = parts.append(tapping[d][1] ~ " if size <= " ~ d) %}{% endfor %}
+{% set coarse_pitch = (parts | join(" else ")) ~ " else 6" %}
+
 sketches:
 {% if parametric %}
   # Declared once, and read with expressions over their own parameters.
   m:
-    desc: The boundary of an M%size% opening
+    desc: The boundary of an M%size% thread, at its %size%mm major diameter
     type: basic
     circle: "%size / 2%"  # radius
     parameters:
@@ -45,8 +192,26 @@ sketches:
         type: float
         default: 3.0
 
-  m-slotted:
-    desc: The boundary of an M%size% opening slotted %width%mm along X
+{% for fit, index, beyond, tolerance in clearances %}
+{% set bore = bores[index] %}
+  m-clearance-{{ fit }}:
+    desc: The boundary of the ISO 273 {{ fit }} ({{ tolerance }}) clearance hole for an M%size% screw
+    type: basic
+    circle: "%({{ bore }}) / 2%"  # radius
+    parameters:
+      size:
+        type: float
+        default: 3.0
+      # An opening the standard has no row for - a slot in a plate that is not
+      # a fastener hole at all, a hole reamed to something else. Zero means
+      # "whatever ISO 273 says for this size", which is what every name this
+      # package publishes asks for.
+      diameter:
+        type: float
+        default: 0.0
+
+  m-slotted-{{ fit }}:
+    desc: The boundary of an ISO 273 {{ fit }} clearance hole for an M%size% screw, slotted %width%mm along X
     type: basic
     # A real slot: a rectangle with semicircular ends. It is placed by the
     # centre of its *first* end, so a slotted opening starts where the plain
@@ -54,11 +219,11 @@ sketches:
     # coordinates and the freedom of movement run from zero.
     slot:
       # The lists below pair every size with every width, so they also name
-      # combinations like "m64-slotted-1" - a 64mm hole "slotted" 1mm. A slot no
+      # combinations like "m64-slotted-1" - a 70mm hole "slotted" 1mm. A slot no
       # longer than the hole is the hole, which is what the degenerate slot
       # draws, and is what this package has always drawn for these.
-      length: "%width if width > size else size%"
-      width: "%size%"
+      length: "%max(width, {{ bore }})%"
+      width: "%{{ bore }}%"
     parameters:
       size:
         type: float
@@ -66,13 +231,42 @@ sketches:
       width:
         type: float
         default: 10.0
+      diameter:
+        type: float
+        default: 0.0
+{% endfor %}
+
+  m-pilot:
+    desc: The boundary of the ISO 2306 tapping drill for an M%size% coarse thread
+    type: basic
+    # Not "size - pitch": ISO 2306 rounds that to a drill somebody owns, and
+    # the difference is real - an M12 is drilled 10.2 rather than 10.25, an
+    # M4.5 3.7 rather than 3.75.
+    circle: "%({{ drill }}) / 2%"  # radius
+    parameters:
+      size:
+        type: float
+        default: 3.0
+      # A thread other than the coarse one the table is for. Give the drill if
+      # you have it, or the pitch and let "d minus P" do it - the rule of thumb
+      # that leaves about three quarters of the thread depth, which is what the
+      # tabulated drills are rounded from. An M12x1.5 is 10.5 either way, where
+      # the coarse M12x1.75 is 10.2.
+      drill:
+        type: float
+        default: 0.0
+      pitch:
+        type: float
+        default: 0.0
 
   # The sketch names this package has published, each an alias of one instance
-  # of the two above.
-{% for size in sizes %}
+  # of those above, plus the two the split into kinds of opening adds.
+{% for size in all_sizes %}
   m{{ size }}: ":m;size={{ size }}"
+  m{{ size }}-clearance: ":m-clearance-medium;size={{ size }}"
+  m{{ size }}-pilot: ":m-pilot;size={{ size }}"
   {% for width in widths %}
-  m{{ size }}-slotted-{{ width }}: ":m-slotted;size={{ size }},width={{ width }}"
+  m{{ size }}-slotted-{{ width }}: ":m-slotted-medium;size={{ size }},width={{ width }}"
   {% endfor %}
 {% endfor %}
 {% else %}
@@ -118,17 +312,64 @@ interfaces:
       moveY: {}  # Hotizontal offset for openings of different sizes
       moveZ: {}  # Affset along the alignment axis
 
+  # An M4 opening is three different holes, and which one it is decides what it
+  # measures: a clearance hole a screw passes through (4.5mm), a tapped hole a
+  # screw threads into (4mm, the thread's major diameter), or the pilot hole
+  # that tapped hole is drilled as (3.3mm). Only the middle one measures the
+  # nominal size, which is what all three used to.
+  #
+  # All three inherit "m" under the same instance name, "opening", so they are
+  # interchangeable where one is expected and every port name below is what it
+  # has always been. What tells them apart is the outline the port is drawn
+  # with and what they mate with.
+
   m-opening:
-    desc: Abstract %size%mm circular opening
+    desc: ISO 273 clearance opening for an M%size% screw
     parameters:
       size: 3.0
     inherits:
-      "m;size=%size%": opening
+      "m;size=%size%":
+        opening:
+          sketch: "m-clearance-medium;size=%size%"
     mates:
+      - "m-opening;size=%size%"
+      - "m-tapped-opening;size=%size%"
+
+  m-tapped-opening:
+    desc: Tapped M%size% opening, at the thread's %size%mm major diameter
+    parameters:
+      size: 3.0
+    # How far a screw driven into this advances per turn: the ISO 261 coarse
+    # pitch for this size. Inherited by every "m*-threaded-*" below, and by the
+    # connections made through them - an assembly that has to say how many turns
+    # reads it from here. A fine pitch is a different thread and this package
+    # names no such size, so the coarse one is the only answer it can give.
+    threadStep: "%{{ coarse_pitch }}%"
+    # No boundary of its own: the thread's major diameter is what "m" draws.
+    inherits:
+      "m;size=%size%": opening
+    # Nothing of its own, and in particular not another tapped opening: two
+    # threads that were cut separately do not meet. Something has to run
+    # through both, and that something - a bolt, a stud, or the clearance hole
+    # of the part being held down - names this from its own side.
+
+  m-pilot-opening:
+    desc: ISO 2306 tapping drill opening for an M%size% coarse thread
+    parameters:
+      size: 3.0
+    inherits:
+      "m;size=%size%":
+        opening:
+          sketch: "m-pilot;size=%size%"
+    # A pilot hole is not a fastening feature - it is what a tapped hole is
+    # before it is tapped - so it mates another pilot hole and the clearance
+    # hole something is drilled through, and not a screw.
+    mates:
+      - "m-pilot-opening;size=%size%"
       - "m-opening;size=%size%"
 
   m-hole:
-    desc: "%depth%mm deep hole of %size%mm diameter"
+    desc: "%depth%mm deep ISO 273 clearance hole for an M%size% screw"
     parameters:
       size: 3.0
       depth: 3.0
@@ -136,14 +377,14 @@ interfaces:
       "m-opening;size=%size%": "%depth%mm-hole"
 
   m-thru:
-    desc: "%size%mm through hole"
+    desc: ISO 273 clearance through hole for an M%size% screw
     parameters:
       size: 3.0
     inherits:
       "m-opening;size=%size%": thru
 
   m-thru-depth:
-    desc: "%depth%mm thick through hole of %size%mm diameter"
+    desc: "%depth%mm thick ISO 273 clearance through hole for an M%size% screw"
     parameters:
       size: 3.0
       depth: 3.0
@@ -157,36 +398,44 @@ interfaces:
   # slotting a hole: the bolt may sit anywhere along what is left of the slot
   # once it is in it.
   m-thru-slotted:
-    desc: "%size%mm through slotted hole, %width%mm long"
+    desc: ISO 273 clearance through hole for an M%size% screw, slotted %width%mm long
     parameters:
       size: 3.0
       width: 10.0
       # How far along the slot the bolt may sit. Nothing, where the "slot" is no
       # longer than the hole it is in.
-      moveX: [0, "%width - size if width > size else 0%", 0]
+      moveX: [0, "%max(width - size, 0)%", 0]
     inherits:
       "m-thru;size=%size%":
         "slotted-%width%":
-          sketch: "m-slotted;size=%size%,width=%width%"
+          sketch: "m-slotted-medium;size=%size%,width=%width%"
 
   m-thru-depth-slotted:
-    desc: "%depth%mm thick through slotted hole %size%mm deep, %width%mm long"
+    desc: "%depth%mm thick ISO 273 clearance through hole for an M%size% screw, slotted %width%mm long"
     parameters:
       size: 3.0
       depth: 3.0
       width: 10.0
-      moveX: [0, "%width - size if width > size else 0%", 0]
+      moveX: [0, "%max(width - size, 0)%", 0]
     inherits:
       "m-thru-depth;size=%size%,depth=%depth%":
         "slotted-%width%":
-          sketch: "m-slotted;size=%size%,width=%width%"
+          sketch: "m-slotted-medium;size=%size%,width=%width%"
+
+  m-tapped-hole:
+    desc: "%depth%mm deep tapped M%size% hole"
+    parameters:
+      size: 3.0
+      depth: 3.0
+    inherits:
+      "m-tapped-opening;size=%size%": "%depth%mm-hole"
 
   m-threaded-thru:
     desc: "%size%mm threaded through hole"
     parameters:
       size: 3.0
     inherits:
-      "m-opening;size=%size%": threaded-thru
+      "m-tapped-opening;size=%size%": threaded-thru
 
   m-threaded-thru-depth:
     desc: "%depth%mm thick threaded through hole of %size%mm diameter"
@@ -197,20 +446,61 @@ interfaces:
       "m-threaded-thru;size=%size%": "%depth%mm"
 
   m-threaded-hole:
-    # The wording is the one this package has always used for these.
-    desc: "%depth%mm thick threaded through hole of %size%mm diameter"
+    # This is a *blind* hole - it inherits "m-tapped-hole", whose instance is
+    # "%depth%mm-hole" - and the wording this package has always used for it
+    # said "through hole", which is what "m-threaded-thru-%depth%" above is.
+    # One of the two had to be wrong and it was this one.
+    desc: "%depth%mm deep threaded M%size% hole"
     parameters:
       size: 3.0
       depth: 3.0
     inherits:
-      "m-hole;size=%size%,depth=%depth%": threaded
+      "m-tapped-hole;size=%size%,depth=%depth%": threaded
+
+  m-pilot-thru:
+    desc: ISO 2306 tapping drill through hole for an M%size% coarse thread
+    parameters:
+      size: 3.0
+    inherits:
+      "m-pilot-opening;size=%size%": thru
+
+  m-pilot-thru-depth:
+    desc: "%depth%mm thick ISO 2306 tapping drill through hole for an M%size% coarse thread"
+    parameters:
+      size: 3.0
+      depth: 3.0
+    inherits:
+      "m-pilot-thru;size=%size%": "%depth%mm"
+
+  m-pilot-hole:
+    desc: "%depth%mm deep ISO 2306 tapping drill hole for an M%size% coarse thread"
+    parameters:
+      size: 3.0
+      depth: 3.0
+    inherits:
+      "m-pilot-opening;size=%size%": "%depth%mm-hole"
 
   m-shaft:
     desc: Abstract %size%mm shaft
     parameters:
       size: 3.0
+    # Several things sit along one shaft - a stack of pulleys, a row of
+    # brackets - and that is what separates it from every other interface
+    # here, where a second item on one port is a mistake worth reporting.
+    multiConnect: true
     inherits:
       "m;size=%size%": shaft
+    # A hole it passes through, and nothing else.
+    #
+    # Not another shaft, and not a screw: two male features do not meet. Not a
+    # tapped opening either - a plain shaft has no thread to engage, and a
+    # thread is what "m-threaded-shaft" below adds. And not a tapping drill,
+    # which is not a hole to assemble through at all: it is the hole a thread
+    # has yet to be cut into.
+    #
+    # The clearance hole is an approximation and worth knowing as one: ISO 273
+    # sizes a hole for a *fastener*, while the fit between a shaft and its bore
+    # is ISO 286, which this package has no interface for.
     mates:
       - "m-opening;size=%size%"
 
@@ -222,14 +512,89 @@ interfaces:
     inherits:
       "m-shaft;size=%size%": "%length%mm-long"
 
+  # A stud, a threaded rod, the threaded end of anything: a shaft that can be
+  # screwed into what it meets rather than only passed through it.
+  m-threaded-shaft:
+    desc: Abstract threaded M%size% shaft
+    parameters:
+      size: 3.0
+    # The same ISO 261 coarse pitch the screw and the tapped opening declare,
+    # so that a stud and the hole it is driven into are checked against each
+    # other the way a screw and its hole are.
+    threadStep: "%{{ coarse_pitch }}%"
+    inherits:
+      "m-shaft;size=%size%": threaded
+    # It is a shaft, so the clearance hole it passes through comes with the
+    # inheritance, as does "multiConnect" - a threaded rod carrying a stack of
+    # plates is the same arrangement. What the thread adds is the one thing a
+    # plain shaft may not do: be driven into a tapped hole.
+    mates:
+      - "m-tapped-opening;size=%size%"
+
+  m-threaded-shaft-length:
+    desc: "%length%mm long threaded M%size% shaft"
+    parameters:
+      size: 3.0
+      length: 10.0
+      moveZ:
+        # How far it may be driven into what it is screwed into - the question
+        # a screw's length asks, with the same clamp for the 1mm lengths the
+        # lists below also name.
+        max: "%max(length - 2, 0)%"
+        min: 0
+        default: 0
+    inherits:
+      "m-threaded-shaft;size=%size%": "%length%mm-long"
+
+  # A screw cuts the thread it then holds, so what it goes into is a tapping
+  # drill rather than a thread that has to match. A bolt is the other half of
+  # that distinction and is declared below.
   m-screw:
     desc: Abstract M%size% screw
     parameters:
       size: 3.0
+    # The ISO 261 coarse pitch. It is the thread the screw *makes*, so nothing
+    # has to agree with it - which is what "selfScrew" on the mating says.
+    threadStep: "%{{ coarse_pitch }}%"
     inherits:
       "m;size=%size%": screw
     mates:
+      # The hole it passes through on its way in.
+      "m-opening;size=%size%": {}
+      # And the one it is driven into. "selfScrew" is on the mating rather than
+      # on this interface because it is true of the pairing: the same screw
+      # cuts nothing on its way through the clearance hole above.
+      "m-pilot-opening;size=%size%":
+        selfScrew: true
+
+  # A bolt matches a thread instead of cutting one, which is the whole of the
+  # difference: it goes into a tapped hole and never into a tapping drill.
+  m-bolt:
+    desc: Abstract M%size% bolt
+    parameters:
+      size: 3.0
+    # The thread it has to *find*, so both ends of the connection are checked
+    # against each other - which is what a screw's thread is exempt from.
+    threadStep: "%{{ coarse_pitch }}%"
+    inherits:
+      "m;size=%size%": bolt
+    mates:
       - "m-opening;size=%size%"
+      - "m-tapped-opening;size=%size%"
+
+  m-bolt-length:
+    desc: "%length%mm long M%size% bolt"
+    parameters:
+      size: 3.0
+      length: 6.0
+      moveZ:
+        # As for a screw: how far it may be driven in, clamped at zero for the
+        # 1mm lengths the lists below also name.
+        max: "%max(length - 2, 0)%"
+        min: 0
+        default: 0
+    inherits:
+      "m-bolt;size=%size%": "%length%mm-long"
 
   m-screw-length:
     desc: "%length%mm long M%size% screw"
@@ -255,10 +620,20 @@ interfaces:
   # check: a slotted opening is a through hole now, so its port is named after
   # the chain it inherits ("slotted-30-3mm-thru-opening-m4") rather than being
   # the bare "m4" an orphan interface had. An ASSY that names that port has to
-  # be updated. Nothing else moved.
-{% for size in sizes %}
+  # be updated. No port has moved since.
+  #
+  # What a clearance hole *measures* did change, though - it is the size ISO 273
+  # gives rather than the nominal one - and "m*-threaded-*" descends from
+  # "m-tapped-opening" rather than "m-opening", because a tapped hole is not a
+  # clearance hole. Same names, same ports, same coordinates either way.
+  #
+  # The three kinds of opening add names of their own, and the eleven sizes
+  # ISO 273 tabulates that the older list never named add a whole set.
+{% for size in all_sizes %}
   m{{ size }}: "m;size={{ size }}"
   m{{ size }}-opening: "m-opening;size={{ size }}"
+  m{{ size }}-tapped-opening: "m-tapped-opening;size={{ size }}"
+  m{{ size }}-pilot-opening: "m-pilot-opening;size={{ size }}"
   {% for depth in depths %}
   m{{ size }}-hole-{{ depth }}: "m-hole;size={{ size }},depth={{ depth }}"
   {% endfor %}
@@ -274,15 +649,33 @@ interfaces:
   m{{ size }}-threaded-thru-{{ depth }}: "m-threaded-thru-depth;size={{ size }},depth={{ depth }}"
   {% endfor %}
   {% for depth in depths %}
+  m{{ size }}-tapped-hole-{{ depth }}: "m-tapped-hole;size={{ size }},depth={{ depth }}"
+  {% endfor %}
+  {% for depth in depths %}
   m{{ size }}-threaded-hole-{{ depth }}: "m-threaded-hole;size={{ size }},depth={{ depth }}"
+  {% endfor %}
+  m{{ size }}-pilot-thru: "m-pilot-thru;size={{ size }}"
+  {% for depth in depths %}
+  m{{ size }}-pilot-thru-{{ depth }}: "m-pilot-thru-depth;size={{ size }},depth={{ depth }}"
+  {% endfor %}
+  {% for depth in depths %}
+  m{{ size }}-pilot-hole-{{ depth }}: "m-pilot-hole;size={{ size }},depth={{ depth }}"
   {% endfor %}
   m{{ size }}-shaft: "m-shaft;size={{ size }}"
   {% for length in depths %}
   m{{ size }}-shaft-{{ length }}: "m-shaft-length;size={{ size }},length={{ length }}"
   {% endfor %}
+  m{{ size }}-threaded-shaft: "m-threaded-shaft;size={{ size }}"
+  {% for length in depths %}
+  m{{ size }}-threaded-shaft-{{ length }}: "m-threaded-shaft-length;size={{ size }},length={{ length }}"
+  {% endfor %}
   m{{ size }}-screw: "m-screw;size={{ size }}"
   {% for length in depths %}
   m{{ size }}-screw-{{ length }}: "m-screw-length;size={{ size }},length={{ length }}"
+  {% endfor %}
+  m{{ size }}-bolt: "m-bolt;size={{ size }}"
+  {% for length in depths %}
+  m{{ size }}-bolt-{{ length }}: "m-bolt-length;size={{ size }},length={{ length }}"
   {% endfor %}
 {% endfor %}
 {% else %}
