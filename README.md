@@ -111,8 +111,15 @@ clearance hole from a tapped one (see **Three holes, not one** below):
   holds is that ``m4-threaded-thru`` is a drop-in for ``m4-opening``: an
   interface of your own declaring ``mates: m4-opening`` used to reach it and
   does not any more. Mate ``m4-tapped-opening`` as well.
+* **A thread advances by its pitch.** ``m*-screw`` and ``m*-tapped-opening``
+  declare a ``threadStep``, which they never did -- see **How far a turn takes
+  it** below. A connection that used to be told the thread advances nothing per
+  turn is now told the ISO 261 coarse pitch.
 
-Older clients see none of this -- their openings are exactly as they were.
+Older clients see none of this -- their openings are exactly as they were, and
+their threads still advance by nothing. Carrying the pitch over to that branch
+is a change of its own, and a safe one; it is left out here because that branch
+is verified byte-for-byte against what was published.
 
 ### A screw may now be driven in, on both branches
 
@@ -184,13 +191,51 @@ d - P for the M32x3.5 of ISO 261. Nothing else is extrapolated, except past the
 end of a table, where the last band's offset simply carries on.
 
 A hole that is none of those -- a slot in a plate that is not a fastener hole at
-all, a hole reamed to something else, a tapping drill for a fine pitch -- is the
-``diameter`` parameter of ``m-clearance-*`` and the ``drill`` parameter of
-``m-pilot``:
+all, a hole reamed to something else, a thread that is not the coarse one -- is
+the ``diameter`` parameter of ``m-clearance-*``, and the ``drill`` or ``pitch``
+parameter of ``m-pilot``:
 
 ```shell
-pc info -s "//pub/std/metric/m:m-pilot;size=12,drill=10.5"   # an M12x1.5
+pc info -s "//pub/std/metric/m:m-pilot;size=12,pitch=1.5"    # an M12x1.5: 10.5
+pc info -s "//pub/std/metric/m:m-pilot;size=12,drill=10.5"   # the same, by drill
+pc info -s "//pub/std/metric/m:m-clearance-medium;size=12,diameter=13"
 ```
+
+``pitch`` is the rule of thumb the tabulated drills are rounded from -- the hole
+is ``d - P``, which leaves about three quarters of the thread depth. Checking
+that against ISO 68-1's basic profile (``H = P*sqrt(3)/2``, so a tapped hole's
+basic minor diameter is ``D1 = d - 1.082532*P``) is what says the table is
+right: every drill it names sits between ``D1`` and the nominal size, at 74% to
+79% thread engagement.
+
+Nothing here is toleranced. ISO 965 is where a tapped hole's limits live, and a
+port boundary is one circle rather than a band, so every number above is the
+basic size.
+
+### How far a turn takes it
+
+A PartCAD interface carries a ``threadStep`` -- how far a connection made
+through it advances per full turn -- which is how an assembly knows that driving
+an M4 screw 6mm home is nine turns rather than a number nobody wrote down. This
+package declared none, so every M-threaded connection it was used for fell back
+to zero.
+
+The two interfaces that actually have a thread now declare it, from ISO 261's
+coarse pitch: ``m*-screw`` and ``m*-tapped-opening``, which is where every
+``m*-threaded-*`` inherits it. A clearance hole, a shaft and a pilot hole do not
+-- none of them has a thread -- and PartCAD takes the pitch from the end that
+does, so bolting through a clearance hole still gets the screw's. Where both ends
+declare one and they disagree, it says so, which is a thing it could not do while
+neither end declared anything.
+
+The coarse pitch is the only answer this package can give: a fine thread is a
+different thread, and every name here is ``m<size>-something`` with no room to
+say which. ``m-pilot`` takes a ``pitch`` for the drill, but no interface does --
+a parameter with a default spells itself into an instance name, so
+``m-screw;size=4`` and ``m-screw;size=4,pitch=0.7`` would be two interfaces that
+do not mate each other.
+
+This is on the newer branch only, like everything else in this section.
 
 ### Eleven sizes that were missing
 

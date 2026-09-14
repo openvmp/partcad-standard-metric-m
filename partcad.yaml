@@ -100,30 +100,52 @@ partcad: ">=0.6.29"
 } %}
 
 # ISO 2306's tapping drill - the hole a thread is CUT INTO before it is tapped -
-# for the coarse pitch of ISO 261. Not "d minus the pitch": the standard rounds
-# that to a drill somebody owns, and the difference is real - an M12x1.75 is
-# drilled 10.2 rather than 10.25, an M4.5x0.75 3.7 rather than 3.75. ISO 261's
-# coarse series ends at M68 and so does this.
+# beside the ISO 261 coarse pitch it is the drill for:
 #
-# A tapped hole itself is neither of these tables: it measures the thread's
-# major diameter, which is d, and that is the one case where the nominal size
-# is the answer.
+#   d: [tapping drill, coarse pitch]
+#
+# The drill is not "d minus the pitch": the standard rounds that to a drill
+# somebody owns, and the difference is real - an M12x1.75 is drilled 10.2 rather
+# than 10.25, an M4.5x0.75 3.7 rather than 3.75. Both columns end at M68, which
+# is where ISO 261's coarse series ends.
+#
+# The pitch is the second thing this package owes PartCAD and never gave it. An
+# interface carries a "threadStep" - how far a connection made through it
+# advances per turn - which is what tells an assembly that driving an M4 screw
+# home is eight turns rather than five, and every interface here left it unset.
+# It is declared below on the two that actually have a thread: the tapped
+# opening and the screw.
+#
+# A tapped hole itself is in neither column: it measures the thread's major
+# diameter, which is d, and that is the one case where the nominal size is the
+# answer. Its minor diameter is d - 1.082 532 P (ISO 68-1's basic profile,
+# D1 = D - 2 x 5/8 H with H = P sqrt(3)/2), which is what the drills above sit
+# just above - they leave about three quarters of the thread depth, which is
+# what tapping a full-depth thread would cost in torque and broken taps.
+# Nothing here is toleranced: ISO 965 is where a tapped hole's limits live, and
+# a sketch is one circle rather than a band, so these are the basic sizes.
 {% set tapping = {
-  1: 0.75,  1.1: 0.85, 1.2: 0.95, 1.4: 1.1,  1.6: 1.25, 1.8: 1.45,
-  2: 1.6,   2.2: 1.75, 2.5: 2.05, 3: 2.5,    3.5: 2.9,  4: 3.3,
-  4.5: 3.7, 5: 4.2,    6: 5,      7: 6,      8: 6.8,    9: 7.8,
-  10: 8.5,  11: 9.5,   12: 10.2,  14: 12,    16: 14,    18: 15.5,
-  20: 17.5, 22: 19.5,  24: 21,    27: 24,    30: 26.5,  32: 28.5,
-  33: 29.5, 36: 32,    39: 35,    42: 37.5,  45: 40.5,  48: 43,
-  52: 47,   56: 50.5,  60: 54.5,  64: 58,    68: 62,
+  1: [0.75, 0.25],    1.1: [0.85, 0.25],  1.2: [0.95, 0.25],  1.4: [1.1, 0.3],
+  1.6: [1.25, 0.35],  1.8: [1.45, 0.35],  2: [1.6, 0.4],      2.2: [1.75, 0.45],
+  2.5: [2.05, 0.45],  3: [2.5, 0.5],      3.5: [2.9, 0.6],    4: [3.3, 0.7],
+  4.5: [3.7, 0.75],   5: [4.2, 0.8],      6: [5, 1],          7: [6, 1],
+  8: [6.8, 1.25],     9: [7.8, 1.25],     10: [8.5, 1.5],     11: [9.5, 1.5],
+  12: [10.2, 1.75],   14: [12, 2],        16: [14, 2],        18: [15.5, 2.5],
+  20: [17.5, 2.5],    22: [19.5, 2.5],    24: [21, 3],        27: [24, 3],
+  30: [26.5, 3.5],    32: [28.5, 3.5],    33: [29.5, 3.5],    36: [32, 4],
+  39: [35, 4],        42: [37.5, 4.5],    45: [40.5, 4.5],    48: [43, 5],
+  52: [47, 5],        56: [50.5, 5.5],    60: [54.5, 5.5],    64: [58, 6],
+  68: [62, 6],
 } %}
 
-# M32 is in both tables and in neither standard. It is an ISO 261 third-choice
-# thread that this package has published since before any of this, so leaving it
-# to round up to M33's row would quietly loosen a size somebody is already
-# using. Its clearances are its neighbours' offsets - M30 and M33 are both
-# d+1 / d+3 / d+5 - and its drill is d - P for the M32x3.5 of ISO 261. It is the
-# only row above that is not the standards' own.
+# M32 is in both tables and in neither ISO 273 nor ISO 2306. It is an ISO 261
+# third-choice thread that this package has published since before any of this,
+# so leaving it to round up to M33's row would quietly loosen a size somebody is
+# already using. Its clearances are its neighbours' offsets - M30 and M33 are
+# both d+1 / d+3 / d+5 - and its drill is d - P. Its *pitch* is not
+# extrapolated: M32x3.5 is ISO 261's own, which is why the drill can be worked
+# out at all. Those four numbers are the only ones above that no standard
+# states.
 
 # The sizes that get a family of names of their own. The eleven ISO 273
 # tabulates that the older list never named are new here, and they are named on
@@ -151,8 +173,12 @@ partcad: ">=0.6.29"
 {% set _ = bores.append("diameter if diameter > 0 else (" ~ (parts | join(" else ")) ~ " else " ~ beyond ~ ")") %}
 {% endfor %}
 {% set parts = [] %}
-{% for d in tapping %}{% set _ = parts.append(tapping[d] ~ " if size <= " ~ d) %}{% endfor %}
-{% set drill = "drill if drill > 0 else (" ~ (parts | join(" else ")) ~ " else size - 6)" %}
+{% for d in tapping %}{% set _ = parts.append(tapping[d][0] ~ " if size <= " ~ d) %}{% endfor %}
+{% set tabulated = "(" ~ (parts | join(" else ")) ~ " else size - 6)" %}
+{% set drill = "drill if drill > 0 else (size - pitch if pitch > 0 else " ~ tabulated ~ ")" %}
+{% set parts = [] %}
+{% for d in tapping %}{% set _ = parts.append(tapping[d][1] ~ " if size <= " ~ d) %}{% endfor %}
+{% set coarse_pitch = (parts | join(" else ")) ~ " else 6" %}
 
 sketches:
 {% if parametric %}
@@ -221,11 +247,15 @@ sketches:
       size:
         type: float
         default: 3.0
-      # A pitch other than the coarse one this table is for: a tapping drill is
-      # the thread's minor diameter, so an M12x1.5 is drilled 10.5 rather than
-      # the 10.2 of an M12x1.75. Give the drill rather than the pitch, because
-      # a drill is what a shop has.
+      # A thread other than the coarse one the table is for. Give the drill if
+      # you have it, or the pitch and let "d minus P" do it - the rule of thumb
+      # that leaves about three quarters of the thread depth, which is what the
+      # tabulated drills are rounded from. An M12x1.5 is 10.5 either way, where
+      # the coarse M12x1.75 is 10.2.
       drill:
+        type: float
+        default: 0.0
+      pitch:
         type: float
         default: 0.0
 
@@ -309,6 +339,12 @@ interfaces:
     desc: Tapped M%size% opening, at the thread's %size%mm major diameter
     parameters:
       size: 3.0
+    # How far a screw driven into this advances per turn: the ISO 261 coarse
+    # pitch for this size. Inherited by every "m*-threaded-*" below, and by the
+    # connections made through them - an assembly that has to say how many turns
+    # reads it from here. A fine pitch is a different thread and this package
+    # names no such size, so the coarse one is the only answer it can give.
+    threadStep: "%{{ coarse_pitch }}%"
     # No boundary of its own: the thread's major diameter is what "m" draws.
     inherits:
       "m;size=%size%": opening
@@ -463,6 +499,9 @@ interfaces:
     desc: Abstract M%size% screw
     parameters:
       size: 3.0
+    # The same ISO 261 coarse pitch the tapped opening declares, which is what
+    # lets PartCAD check that the two ends of a screwed connection agree.
+    threadStep: "%{{ coarse_pitch }}%"
     inherits:
       "m;size=%size%": screw
     mates:
