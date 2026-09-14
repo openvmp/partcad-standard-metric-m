@@ -31,6 +31,8 @@ parts:
 | --- | --- | --- |
 | ``m`` | ``size`` | ``m4`` |
 | ``m-opening`` | ``size`` | ``m4-opening`` |
+| ``m-tapped-opening`` | ``size`` | ``m4-tapped-opening`` |
+| ``m-pilot-opening`` | ``size`` | ``m4-pilot-opening`` |
 | ``m-hole`` | ``size``, ``depth`` | ``m4-hole-3`` |
 | ``m-thru`` | ``size`` | ``m4-thru`` |
 | ``m-thru-depth`` | ``size``, ``depth`` | ``m4-thru-3`` |
@@ -39,23 +41,28 @@ parts:
 | ``m-threaded-thru`` | ``size`` | ``m4-threaded-thru`` |
 | ``m-threaded-thru-depth`` | ``size``, ``depth`` | ``m4-threaded-thru-3`` |
 | ``m-threaded-hole`` | ``size``, ``depth`` | ``m4-threaded-hole-3`` |
+| ``m-tapped-hole`` | ``size``, ``depth`` | -- |
+| ``m-pilot-thru`` | ``size`` | ``m4-pilot-thru`` |
+| ``m-pilot-thru-depth`` | ``size``, ``depth`` | ``m4-pilot-thru-3`` |
+| ``m-pilot-hole`` | ``size``, ``depth`` | ``m4-pilot-hole-3`` |
 | ``m-shaft`` | ``size`` | ``m4-shaft`` |
 | ``m-shaft-length`` | ``size``, ``length`` | ``m4-shaft-10`` |
 | ``m-screw`` | ``size`` | ``m4-screw`` |
 | ``m-screw-length`` | ``size``, ``length`` | ``m4-screw-12`` |
 
-The two sketches that draw the port boundaries, ``m`` and ``m-slotted``, are
-parametric in the same way, and the per-size sketch names (``m4``,
-``m4-slotted-30``) are aliases of them. ``m-slotted`` now draws an actual slot --
+The sketches that draw the port boundaries are parametric in the same way, and
+the per-size sketch names (``m4``, ``m4-clearance``, ``m4-pilot``,
+``m4-slotted-30``) are aliases of them. ``m-slotted-*`` draws an actual slot --
 a rectangle with semicircular ends -- where it used to draw a plain circle and
 carry a TODO about it; PartCAD's "basic" sketches have a ``slot`` outline.
 
 **Nothing published has been withdrawn.** An alias *is* the interface it names:
 the same ports under the same names, a drop-in for it, mating with whatever it
 mates with. A part that says ``implements: m4-thru-3`` and an ASSY that connects
-its ``3mm-thru-opening-m4`` port go on working exactly as they did -- all 11,150
-names, their descriptions, their ports, their port coordinates and their freedom
-of movement are unchanged.
+its ``3mm-thru-opening-m4`` port go on working exactly as they did -- every one
+of the 11,150 names is still there, with its ports under the same names at the
+same coordinates. What a clearance hole *measures* did change; that is the next
+section.
 
 ### Two PartCADs, one package
 
@@ -73,7 +80,7 @@ template picks:
 Neither branch is a lesser version of the other for the names they share: on
 both, ``m4-thru-3`` is the same interface with the same port in the same place.
 
-### One break, on the newer branch only
+### What changed, on the newer branch only
 
 A slotted opening is a **through hole** now: ``m4-thru-3-slotted-30`` inherits
 ``m4-thru-3`` rather than standing on its own, so it mates with a screw the way
@@ -87,8 +94,25 @@ other port here. **An ASSY that connects that port by name has to be updated.**
 Nothing else moved: of the 11,150 published interfaces, the 8,000 slotted ones
 changed in exactly that way and the other 3,150 not at all.
 
-Older clients see none of this -- their slotted openings are exactly as they
-were.
+Two other things moved on this branch, both of them consequences of telling a
+clearance hole from a tapped one (see **Three holes, not one** below):
+
+* **A clearance hole measures what ISO 273 says it does.** ``m4-thru`` draws a
+  4.5mm circle rather than a 4mm one. Nothing else about the interface changed
+  -- same name, same port, same coordinates, and everything it mated before it
+  mates now -- but a projection or a viewer shows the corrected size, and it is
+  a *fix*: the old circle was the one a screw could not fit through.
+* **``m*-threaded-*`` descends from ``m*-tapped-opening``** rather than from
+  ``m*-opening``, because a tapped hole is not a clearance hole. Port names are
+  unchanged (both openings are inherited under the same instance name), and a
+  screw still mates them -- ``m*-screw`` names the tapped opening as a mate, so
+  a threaded hole is now a screw's mate directly rather than by inheriting one
+  from a clearance hole it is not. What no longer
+  holds is that ``m4-threaded-thru`` is a drop-in for ``m4-opening``: an
+  interface of your own declaring ``mates: m4-opening`` used to reach it and
+  does not any more. Mate ``m4-tapped-opening`` as well.
+
+Older clients see none of this -- their openings are exactly as they were.
 
 ### A screw may now be driven in, on both branches
 
@@ -104,6 +128,80 @@ The parametric branch clamps it at zero; the older branch cannot be touched
 without ceasing to be what was published, so PartCAD reports those fifty and
 reads them as no movement, which is what they already silently were.
 
+## Three holes, not one
+
+An M4 screw involves three different holes, and only one of them is 4mm across:
+
+| The hole | For an M4 | Where the number comes from |
+| --- | --- | --- |
+| **Clearance** -- the screw passes through it | 4.5mm | ISO 273, medium series (H13) |
+| **Tapped** -- the screw threads into it | 4mm | the thread's major diameter (ISO 261, ISO 724) |
+| **Pilot** -- drilled first, then tapped | 3.3mm | ISO 2306, for the coarse pitch of ISO 261 |
+
+Every one of them used to be drawn 4mm across, which is right for exactly one of
+the three: **an M4 screw does not pass through a 4mm hole.** On PartCAD 0.8.78
+and newer each kind is its own opening and measures what it should:
+
+* ``m*-opening``, ``m*-hole-*``, ``m*-thru``, ``m*-thru-*`` and the slotted ones
+  are **clearance** holes. This is the one thing about the published names that
+  changed, and it is why: they are the holes a screw goes through.
+* ``m*-tapped-opening``, ``m*-threaded-thru``, ``m*-threaded-thru-*`` and
+  ``m*-threaded-hole-*`` are **tapped**, at the nominal size -- unchanged,
+  because the nominal size was always the right answer for these.
+* ``m*-pilot-opening``, ``m*-pilot-thru``, ``m*-pilot-thru-*`` and
+  ``m*-pilot-hole-*`` are the **pilot** hole. They are new.
+
+All three inherit ``m`` under the same instance name, so a port keeps the name
+it has always had -- ``m4-thru-3`` still carries ``3mm-thru-opening-m4`` -- and
+a screw mates a clearance hole and a tapped one, a pilot hole mates a pilot hole
+and the clearance hole something is drilled through, and a shaft mates a
+clearance hole only.
+
+ISO 273's other two series are there to be drawn, as the sketches
+``m-clearance-fine`` (H12) and ``m-clearance-coarse`` (H14). The *interfaces*
+use the medium one, because a fit class is a tolerance rather than a different
+feature: making it a parameter would split ``m4-thru`` into three interfaces
+that do not mate each other, since PartCAD registers a mate against one
+parametrized instance.
+
+### Where the numbers come from
+
+Two tables at the top of ``partcad.yaml``, one per standard, each of them the
+standard's whole table: ISO 273's clearance holes in three series, M1 to M150,
+and ISO 2306's tapping drills for the coarse pitch of ISO 261, M1 to M68 --
+which is where ISO 261's coarse series ends. Each column is read as one PartCAD
+expression over ``size``, so a size a standard does not tabulate (an M9, an M11)
+rounds **up** to the next row it does: a clearance hole is never returned
+smaller than the standard's. Only the *names* stop at M64; ``m-thru;size=80``
+gets ISO 273's own 86mm.
+
+One row in each table is not the standard's, and it is the same size both times.
+M32 is an ISO 261 third-choice thread this package has published all along, and
+neither ISO 273 nor ISO 2306 has a row for it; leaving it to round up to M33's
+would quietly loosen a size somebody is already using. Its clearances are its
+neighbours' offsets -- M30 and M33 are both d+1 / d+3 / d+5 -- and its drill is
+d - P for the M32x3.5 of ISO 261. Nothing else is extrapolated, except past the
+end of a table, where the last band's offset simply carries on.
+
+A hole that is none of those -- a slot in a plate that is not a fastener hole at
+all, a hole reamed to something else, a tapping drill for a fine pitch -- is the
+``diameter`` parameter of ``m-clearance-*`` and the ``drill`` parameter of
+``m-pilot``:
+
+```shell
+pc info -s "//pub/std/metric/m:m-pilot;size=12,drill=10.5"   # an M12x1.5
+```
+
+### Eleven sizes that were missing
+
+ISO 273 tabulates 35 nominal sizes between M1 and M64 and this package named 24
+of them, so **M1.8, M4.5, M7, M18, M22, M27, M33, M39, M45, M52 and M60** have
+the whole family of names now, the way every other size does. M32 stays where it
+was: it is a real thread, just not one ISO 273 has a row for.
+
+This is on the newer branch only. An older PartCAD gets the 25 sizes that were
+published, unchanged.
+
 ## Interfaces
 
 * ``m\*``
@@ -113,20 +211,32 @@ reads them as no movement, which is what they already silently were.
 
 * ``m*-opening``
 
-  An abstract interface for openings: thru or not, threaded or not (as opposed to screws, shafts etc)
+  An opening a screw passes through: the ISO 273 clearance hole, thru or not
+  (as opposed to screws, shafts etc). 4.5mm for an ``m4-opening``.
+
+* ``m*-tapped-opening``
+
+  An opening a screw threads into, at the thread's major diameter -- which is
+  the nominal size, so 4mm for an ``m4-tapped-opening``. What every
+  ``m*-threaded-*`` below is.
+
+* ``m*-pilot-opening``
+
+  The hole a tapped one is drilled as before it is tapped: the ISO 2306 tapping
+  drill for the coarse pitch, so 3.3mm for an ``m4-pilot-opening``.
 
 * ``m*-hole-*``
 
-  A hole of the corresponding depth (not a thru). No thread.
+  A clearance hole of the corresponding depth (not a thru). No thread.
   E.g. ``m2-hole-8`` for an 8mm deep hole in a surface of more than 8mm thickness.
 
 * ``m*-thru``
 
-  A thru opening of an unspecified depth. No thread.
+  A clearance thru opening of an unspecified depth. No thread.
 
 * ``m*-thru-*``
 
-  A thru opening of the specified depth. No thread.
+  A clearance thru opening of the specified depth. No thread.
   E.g. ``m2-thru-8`` for a thru opening in an 8mm thick surface.
 
 * ``m*-thru-*-slotted-*``
@@ -143,6 +253,17 @@ reads them as no movement, which is what they already silently were.
 
   A thru opening of the specified depth.
   E.g. ``m2-threaded-thru-8`` for a threaded thru opening in an 8mm thick surface.
+
+* ``m*-pilot-thru``, ``m*-pilot-thru-*``
+
+  A tapping drill through an unspecified or a specified thickness.
+  E.g. ``m2-pilot-thru-8`` for the 1.6mm hole an M2 thread is cut into, through
+  an 8mm thick surface.
+
+* ``m*-pilot-hole-*``
+
+  A tapping drill of the corresponding depth (not a thru).
+  E.g. ``m4-pilot-hole-8`` for the 3.3mm hole an 8mm deep M4 thread is cut into.
 
 * ``m*-shaft``
 
